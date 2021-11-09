@@ -26,7 +26,7 @@ git clone https://github.com/florianlanger/leveraging_geometry_for_shape_estimat
   1. Object Detection and Segmentation.
   Our object detection and segmentation is based on [Swin-Transformers][swin].
   2. CAD model retrieval.
-  CAD models are rendered using [Blender]. CAD model world coordinates are computed using [PyTorch3D][py3d].
+  CAD models are rendered using [Blender][blend]. CAD model world coordinates are computed using [PyTorch3D][py3d].
   3. Keypoint Matching.
   Keypoint matching is performed using [SuperPoint][super].
   5. Pose Estimation.
