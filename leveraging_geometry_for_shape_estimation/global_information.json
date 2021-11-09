@@ -1,0 +1,106 @@
+{
+    "general":
+        {
+            "target_folder": "/data/cornucopia/fml35/experiments/exp_023_debug",
+            "models_folder_read": "/data/cornucopia/fml35/experiments/test_output_all_s2",
+            "image_folder": "/data/cvfs/fml35/derivative_datasets/pix3d_new/debug_set",
+            "mask_folder": "/data/cvfs/fml35/derivative_datasets/pix3d_new/flat_masks",
+            "gpu": 0,
+            "visualise": "True",
+            "visualisations_per_category": 10
+        },
+    "dataset": 
+        {
+            "pix3d_path": "/data/cvfs/fml35/derivative_datasets/pix3d_new/",
+            "categories": ["bed","bookcase","chair","desk","misc","sofa","table","tool","wardrobe"],
+            "split": "s1"
+        },
+    "models": 
+        {
+            "elev": [0.0,15.0,30.0,45.0],
+            "azim": [0.0,22.5,45.0,67.5,90.0,112.5,135.0,157.5,180.0,202.5,225.0,247.5,270.0,292.5,315.0,337.5],
+            "dist": 1.2,
+            "fov": 60.0,
+            "img_size": 256,
+            "max_edge_length_remesh": 0.15
+        },
+    "segmentation":
+        {
+            "use_gt": "True",
+            "config": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_51_38_s2_pretrained_finished/mask_rcnn_swin_small_patch4_window7_mstrain_480-800_adamw_3x_coco.py",
+            "checkpoint": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_51_38_s2_pretrained_finished/epoch_66.pth",
+            "threshold": 0.01,
+            "boxiou_threshold": 0.3,
+            "max_bbox_length": 150,
+            "img_size": 256 
+        },
+    "retrieval":
+        {
+            "checkpoint_file": "/data/cornucopia/fml35/experiments/shape_estimation/retrieval_plus_keypoints/date_2021_04_10_time_11_11_48_single_euclidean_s2_gt/checkpoints/epoch_25_model.pth",
+            "number_nearest_neighbours": 20
+        },
+    "keypoints":
+        {
+            "detection":
+                {
+                    "weights_path": "/data/cornucopia/fml35/other_peoples_work/keypoints/SuperPoint/SuperPointPretrainedNetwork/superpoint_v1.pth",
+                    "nms_dist": 4,
+                    "conf_thresh": 0.015,
+                    "nn_thresh": 0.5
+                },
+            "matching":
+                {
+                    "top_n_retrieval": 1,
+                    "crossCheck": true,
+                    "k_matches_no_crossCheck": 1
+
+                }
+        },
+    "pose_and_shape":
+        {
+            "pose":
+                {
+                    "use_correct_matches": "False",
+                    "leave_out_matches": 0,
+                    "max_number_keypoints_for_pose": 4,
+                    "n_points_finding_best": 1000,
+                    "max_poses_to_check": 3000000,
+                    "choose_best_based_on": "combined",
+                    "batch_size": 1000,
+                    "batch_size_optim": 1000,
+                    "use_gt_z": "True",
+                    "fraction_of_points_for_dist": 0.2,
+                    "weighting_seg_vs_keypoints": 1.0,
+                    "sensor_width": 32,
+                    "number_visualisations_per_object": 1,
+                    "absolute_pose_algorithm": "upnp"
+                },
+            "shape":
+                {
+                    "optimise_shape": "True",
+                    "planes": [[1,0,0.0,0],[0,1.0,0,0],[0,0,1,0.0]],
+                    "bounds":
+                        {
+                            "stretching": 0.6,
+                            "rotations": [5,60,20],
+                            "delta_T": 0.2
+                        },
+                    "scipy_lbfgs":
+                        {
+                            "maxcor": 10,
+                            "ftol": 1e-4,
+                            "gtol": 1e-05,
+                            "eps": 1e-08,
+                            "maxfun": 15000,
+                            "maxiter": 15000,
+                            "maxls": 20,
+                            "finite_diff_rel_step": "None"
+                        }
+                }
+        },
+    "evaluate_poses":
+        {
+            "metrics": ["F1@0.300000","F1@0.500000","F1@0.700000"],
+            "thresholds": [50,55,60,65,70,75,80,85,90,95]
+        }
+}
