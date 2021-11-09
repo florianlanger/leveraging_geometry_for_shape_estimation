@@ -37,7 +37,7 @@ git clone https://github.com/florianlanger/leveraging_geometry_for_shape_estimat
 
 ## Demo
 
-Run Mesh R-CNN on [Pix3D][pix].
+Run our system on [Pix3D][pix].
 1. Download Pix3D and replace the path in the ```global_config.json```
 2. Change the path in ```model/model.sh``` to your Blender installation.
 3. Run ```run_all.sh``` to run the whole pipeline.
