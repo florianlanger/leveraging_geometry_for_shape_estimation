@@ -29,7 +29,7 @@ source ./venv/bin/activate
 After insalling the packages above install additional dependencies by
 ```
 python3.6 -m pip install -r requirements.txt
-
+```
 To install this repo
 ```
 git clone https://github.com/florianlanger/leveraging_geometry_for_shape_estimation
@@ -37,13 +37,13 @@ cd leveraging_geometry_for_shape_estimation && pip install -e .
 ```
 
 ## Pipeline Overview
-  1. Object Detection and Segmentation.
+  1. Object Detection and Segmentation.\
   Our object detection and segmentation is based on [Swin-Transformers][swin].
-  2. CAD model retrieval.
+  2. CAD model retrieval.\
   CAD models are rendered using [Blender][blend]. CAD model world coordinates are computed using [PyTorch3D][py3d].
-  3. Keypoint Matching.
+  3. Keypoint Matching.\
   Keypoint matching is performed using [SuperPoint][super].
-  5. Pose Estimation.
+  5. Pose Estimation.\
   Pose estimation is performed using [OpenGV][ogv] and also [PyTorch3D][py3d].
   
   Depending on which steps of the pipeline you would like to modify you may not need to install all requirements listed above.
