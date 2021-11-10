@@ -19,9 +19,6 @@ from scipy.spatial.transform import Rotation as scipy_rot
 from metrics import compare_meshes
 from pose_selection import stretch_3d_coordinates
 
-# sys.path.insert(0,'/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/')
-# from pose_and_shape_optimisation.pose_selection import compute_rendered_pixel,compute_rendered_pixel_shape,stretch_3d_coordinates
-
 
 def convert_metrics_to_json(shape_metrics):
 

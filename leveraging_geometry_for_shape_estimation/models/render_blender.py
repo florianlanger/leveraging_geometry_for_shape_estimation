@@ -67,7 +67,9 @@ def main():
     # gpus = enable_gpus("CUDA", [3])
     # os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 
-    global_info = sys.argv[1] + '/global_information.json'
+    target_folder = "/data/cornucopia/fml35/experiments/exp_024_debug"    
+
+    global_info = target_folder + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)
 

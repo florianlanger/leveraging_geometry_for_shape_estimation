@@ -93,6 +93,10 @@ def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no
             retrieval_list = json.load(f)["nearest_neighbours"]
         
         for i in range(top_n_retrieval):
+            out_path = target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
+            if os.path.exists(out_path):
+                continue
+
             rendered_kp_path = models_folder_read + '/models/keypoints/' + retrieval_list[i]["path"].replace('.png','.npz').replace('.0.','.').replace('.5.','.')
             kp_rendered = np.load(rendered_kp_path)
             pts_rendered,desc_rendered = kp_rendered["pts"],kp_rendered["desc"]
@@ -111,7 +115,7 @@ def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no
 
             pixels_real_orig_size = pixel_cropped_to_original(pixels_real,bbox,max_bbox_length,img_size)
 
-            with open(target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','w') as f:
+            with open(out_path,'w') as f:
                 json.dump({"pixels_real_orig_size": pixels_real_orig_size.tolist(),"pixels_rendered": pixels_rendered.tolist()},f)
 
 

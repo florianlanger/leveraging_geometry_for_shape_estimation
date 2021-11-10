@@ -15,9 +15,7 @@ from pytorch3d.renderer import (look_at_view_transform,FoVPerspectiveCameras,Ras
 from pytorch3d.io import load_objs_as_meshes, save_obj, load_obj
 from scipy.spatial.transform import Rotation as scipy_rot
 
-
-sys.path.insert(0,'/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/')
-from pose_and_shape_optimisation.pose_selection import compute_rendered_pixel,compute_rendered_pixel_shape,stretch_3d_coordinates
+from leveraging_geometry_for_shape_estimation.pose_and_shape_optimisation.pose_selection import compute_rendered_pixel,compute_rendered_pixel_shape,stretch_3d_coordinates
 
 
 def load_mesh(full_path,R,T,device):

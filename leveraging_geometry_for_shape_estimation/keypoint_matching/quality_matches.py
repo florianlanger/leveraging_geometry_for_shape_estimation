@@ -17,9 +17,8 @@ from pytorch3d.io import load_objs_as_meshes, save_obj, load_obj
 from scipy.spatial.transform import Rotation as scipy_rot
 
 
-sys.path.insert(0,'/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/')
-from pose_and_shape_optimisation.pose_selection import compute_rendered_pixel
-from pose_and_shape_optimisation.vis_pose import load_mesh,render_mesh,overlay_rendered_image,plot_matches
+from leveraging_geometry_for_shape_estimation.pose_and_shape_optimisation.pose_selection import compute_rendered_pixel
+from leveraging_geometry_for_shape_estimation.pose_and_shape_optimisation.vis_pose import load_mesh,render_mesh,overlay_rendered_image,plot_matches
 
     
 
