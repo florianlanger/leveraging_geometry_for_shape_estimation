@@ -2,10 +2,10 @@
 
 Official implementation of the paper
 
-<!-- > **Leveraging Geometry for Shape Estimation from a Single RGB Image** \
+> **Leveraging Geometry for Shape Estimation from a Single RGB Image** \
 > BMVC 2021
 > Florian Langer, [Ignas Budvytis][ignas], [Roberto Cipolla][roberto] \
-> [[arXiv]][1] -->
+> [arXiv][1]
 
 Our proposed framework estimates shapes of objects in images by retrieving CAD models from a database and adapting and aligning them based on keypoint matches.
 
