@@ -10,7 +10,7 @@ Official implementation of the paper
 Our proposed framework estimates shapes of objects in images by retrieving CAD models from a database and adapting and aligning them based on keypoint matches.
 
 <div align="center">
-  <img src="https://github.com/florianlanger/leveraging_geometry_for_shape_estimation/assets/teaser.gif" width="550px" />
+  <img src="https://github.com/florianlanger/leveraging_geometry_for_shape_estimation/blob/main/assets/teaser.gif" width="550px" />
 </div>
 
 
