@@ -16,9 +16,8 @@ import cv2
 from collections import Counter
 
 import sys
-sys.path.insert(0,'/home/mifs/fml35/code/shape/retrieval_plus_keypoints/retrieval')
-from models.global_pooling_model import Global_Pooling_Model
 
+from leveraging_geometry_for_shape_estimation.retrieval.global_pooling_model import Global_Pooling_Model
 
 
 class Converter(object):
@@ -216,6 +215,7 @@ if __name__ == "__main__":
         device = torch.device("cpu")
 
     dummy_config_old_code = get_dummy_config()
+
     path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_old_order.json'
     # path_models_file = target_folder + '/models/model_list.json'
     elev = global_config["models"]["elev"]
@@ -258,9 +258,6 @@ if __name__ == "__main__":
             # with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as file:
             with open(target_folder + '/segmentation_infos/' + new_name,'r') as file:
                 predicted_category = json.load(file)["predictions"]["category"]
-                    
-            print('should use predicted category but for purpose of comparing use gt category')
-            predicted_category = name.split('_')[0]
             
             nn = find_nearest_neighbours(real_embedding,syn_embeddings,predicted_category,number_nn,converter)
 

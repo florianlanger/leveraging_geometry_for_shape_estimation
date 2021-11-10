@@ -11,7 +11,7 @@ def main():
     with open(global_info,'r') as f:
         global_config = json.load(f)
 
-    target_folder = global_config["general"]["target_folder"] + '/images'
+    target_folder = global_config["general"]["target_folder"]
 
     split = global_config["dataset"]["split"]
     pix_path = global_config["dataset"]["pix3d_path"]
@@ -37,13 +37,13 @@ def main():
                     continue
 
                 # copy img
-                old_path = pix_path + '/' + cat + '/' + img
-                new_path = target_folder + '/' + cat + '_' + img
+                old_path = pix_path + 'img/' + cat + '/' + img
+                new_path = target_folder  + '/images/' + cat + '_' + img
                 shutil.copyfile(old_path,new_path)
 
                 # copy mask
                 old_path = pix_path + '/mask/' + cat + '/' + img.split('.')[0] + '.png'
-                new_path = target_folder + '/' + cat + '_' + img.split('.')[0] + '.png'
+                new_path = target_folder +  '/masks/' + cat + '_' + img.split('.')[0] + '.png'
                 shutil.copyfile(old_path,new_path)
 
 if __name__ == '__main__':

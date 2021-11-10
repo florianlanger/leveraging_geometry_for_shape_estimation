@@ -1,3 +1,6 @@
+
+# The first two functions are taken from https://github.com/facebookresearch/meshrcnn/blob/main/meshrcnn/utils/VOCap.py
+
 import torch
 import numpy as np
 import json
@@ -5,6 +8,7 @@ import sys
 import argparse
 import os
 from tqdm import tqdm
+import random
 
 def compute_ap(scores, labels, npos, device=None):
     if device is None:
@@ -106,7 +110,11 @@ def compute_all_aps(metrics_by_category,categories_true_counters,thresholds):
 
             for threshold in thresholds:
                 labels = torch.tensor(metrics_by_category[threshold][metric][category]["F"]) > threshold
-                ap_value = compute_ap(torch.tensor(metrics_by_category[threshold][metric][category]["mask_scores"]),labels,categories_true_counters[category])
+                scores = torch.tensor(metrics_by_category[threshold][metric][category]["mask_scores"])
+                indices = list(range(len(labels)))
+                random.shuffle(indices)
+
+                ap_value = compute_ap(scores[indices],labels[indices],categories_true_counters[category])
                 if torch.is_tensor(ap_value):
                     ap_value = ap_value.item()
                 aps[metric][category][threshold] = ap_value * 100
@@ -307,13 +315,13 @@ def write_aps(global_config):
         for category in aps[metric]:
             aps_mean[metric][category] = aps[metric][category]["mean"]
 
-    with open(target_folder  + '/global_stats/ap_values.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_values_shuffled_2.json', 'w') as f:
             json.dump(aps, f, indent=4)
 
-    with open(target_folder  + '/global_stats/ap_50_values.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_50_values_shuffled_2.json', 'w') as f:
         json.dump(aps_50, f, indent=4)
 
-    with open(target_folder  + '/global_stats/ap_mean_values.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_mean_values_shuffled_2.json', 'w') as f:
         json.dump(aps_mean, f, indent=4)
     
 

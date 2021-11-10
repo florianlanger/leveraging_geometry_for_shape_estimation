@@ -3,7 +3,30 @@ import json
 import shutil
 import sys
 
-def make_dirs(path):
+
+def preprocess_config(in_path,out_path):
+
+    with open(in_path,'r') as f:
+        config = json.load(f)
+
+    # config["general"]["models_folder_read"] = "/data/cornucopia/fml35/experiments/test_output_all_s2"
+    config["general"]["models_folder_read"] = config["general"]["target_folder"]
+    config["general"]["image_folder"] = config["general"]["target_folder"] + '/images'
+    config["general"]["mask_folder"] = config["general"]["target_folder"] + '/masks'
+
+    if config["segmentation"]["use_gt"] == "False":
+        config["segmentation"]["config"] = "configs/segmentation_swin_{}.py".format(config["dataset"]["split"])
+        config["segmentation"]["checkpoint"] = "models/segmentation_swin_{}.pth".format(config["dataset"]["split"])
+
+        config["retrieval"]["checkpoint_file"] = "models/embedding_predicted_mask_{}.pth".format(config["dataset"]["split"])
+
+    elif config["segmentation"]["use_gt"] == "True":
+        config["retrieval"]["checkpoint_file"] = "models/embedding_gt_mask_{}.pth".format(config["dataset"]["split"])
+
+    with open(out_path,'w') as f:
+        json.dump(config,f,indent=4)
+
+def make_dirs(path,global_info_path):
     os.mkdir(path)
     os.mkdir(path + '/bbox_overlap')
     os.mkdir(path + '/embedding')
@@ -41,23 +64,22 @@ def make_dirs(path):
     os.mkdir(path + '/models/keypoints')
     os.mkdir(path + '/models/keypoints_vis')
 
-    shutil.copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation',path + '/code')
-    shutil.copy('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/global_information.json',path + '/global_information.json')
+    preprocess_config(global_info_path,path + '/global_information.json')
     
 
 
 
 def main():
-    global_info = os.path.dirname(os.path.abspath(__file__)) + '/../global_information.json'
-    with open(global_info,'r') as f:
+    global_info_path = os.path.dirname(os.path.abspath(__file__)) + '/../global_information.json'
+    with open(global_info_path,'r') as f:
         global_config = json.load(f)
 
     target_folder = global_config["general"]["target_folder"]
 
     assert target_folder == sys.argv[1]
-    # target_folder = "/data/cornucopia/fml35/experiments/debug_segmentation_5"
+
     print('Create dirs')
-    make_dirs(target_folder)
+    make_dirs(target_folder,global_info_path)
 
 if __name__ == '__main__':
     main()
