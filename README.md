@@ -71,7 +71,7 @@ If you use this code please cite the following publication:
 }
 ```
 
-[1]: paper
+[1]: https://arxiv.org/abs/2111.05615
 [ogv]: https://laurentkneip.github.io/opengv/page_installation.html
 [blend]: https://www.blender.org/download/
 [py3d]: https://github.com/facebookresearch/pytorch3d
