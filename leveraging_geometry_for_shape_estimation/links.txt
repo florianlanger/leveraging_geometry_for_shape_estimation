@@ -1,0 +1,16 @@
+
+# S1 Predicted 
+"config": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_48_44_s1_pretrained_finished/mask_rcnn_swin_small_patch4_window7_mstrain_480-800_adamw_3x_coco.py",
+"checkpoint": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_48_44_s1_pretrained_finished/epoch_67.pth"
+"checkpoint_file": "/data/cornucopia/fml35/experiments/shape_estimation/retrieval_plus_keypoints/date_2021_03_28_time_10_20_45_single_encoder_euclidean/checkpoints/epoch_355_model.pth"
+
+# S2 Predicted
+"config": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_51_38_s2_pretrained_finished/mask_rcnn_swin_small_patch4_window7_mstrain_480-800_adamw_3x_coco.py",
+"checkpoint": "/data/cornucopia/fml35/other_peoples_work/detection_and_segmentation/mmdetection/outputs/date_2021_06_05_time_13_51_38_s2_pretrained_finished/epoch_66.pth",
+"checkpoint_file": "/data/cornucopia/fml35/experiments/shape_estimation/retrieval_plus_keypoints/date_2021_03_28_time_13_13_36_single_encoder_euclidean_s2/checkpoints/epoch_10_model.pth",
+
+# S1 GT
+"checkpoint_file": "/data/cornucopia/fml35/experiments/shape_estimation/retrieval_plus_keypoints/date_2021_04_10_time_09_58_29_single_euclidean_s1_gt/checkpoints/epoch_60_model.pth",
+
+# S2 GT
+"checkpoint_file": "/data/cornucopia/fml35/experiments/shape_estimation/retrieval_plus_keypoints/date_2021_04_10_time_11_11_48_single_euclidean_s2_gt/checkpoints/epoch_25_model.pth",

@@ -41,7 +41,8 @@ def main():
             with open(target_folder + '/segmentation_infos/' + name,'r') as file:
                 segmentation_infos = json.load(file)
 
-            if bbox_infos['valid']:
+            if bbox_infos['valid'] and bbox_infos['correct_category']:
+
 
 
                 mask_path = target_folder + '/segmentation_masks/' + name.replace('.json','.png')
@@ -50,9 +51,14 @@ def main():
                 old_ending = segmentation_infos['img'].split('.')[1]
 
                 out_path = target_folder + '/cropped_and_masked_small/' + name.replace('.json','.' + old_ending)
+
+                if 'bed_0109_1' in name:
+                    print(bbox_infos)
+                    print(out_path)
+                    print(mask_path)
+
                 if os.path.exists(out_path):
                     continue
-
 
                 # mask_path = target_folder + '/segmentation_masks/' + name.replace('.json','.' + old_ending)
                 # mask_path = '/data/cornucopia/fml35/experiments/test_output_all_s2/segmentation_masks/' + name.replace('.json','.png')

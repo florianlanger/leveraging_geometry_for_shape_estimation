@@ -88,7 +88,7 @@ def visualise_prediction(model,name,class_dict,target_folder,image_folder,testin
             
     if visualise:
         combined_output = model.show_result(img_path, result, score_thr=testing_threshold)
-        cv2.imwrite(target_folder + '/segmentation_vis/' + first_name + '.png',combined_output)
+        cv2.imwrite(target_folder + '/segmentation_all_vis/' + first_name + '.png',combined_output)
 
 def make_directories(target_directory):
 
@@ -114,10 +114,10 @@ def main():
     with open(global_info,'r') as f:
         global_config = json.load(f)
 
+    with open(global_config["general"]["target_folder"] + '/global_stats/visualisation_images.json','r') as f:
+        visualisation_list = json.load(f)
+
     if global_config["segmentation"]["use_gt"] == "False":
-
-
-
         target_folder = global_config["general"]["target_folder"]
         config_file = global_config["segmentation"]["config"]
         checkpoint_file = global_config["segmentation"]["checkpoint"]
@@ -137,11 +137,12 @@ def main():
 
         for name in tqdm(os.listdir(image_folder)):
 
+            visualise = name in visualisation_list
             # if name == 'bed_0020.png':
 
             with torch.no_grad():
                 padding = [0,0]
-                visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,visualise=True)
+                visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,visualise=visualise)
 
 
 

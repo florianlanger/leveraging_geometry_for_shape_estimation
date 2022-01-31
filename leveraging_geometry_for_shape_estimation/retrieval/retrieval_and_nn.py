@@ -105,7 +105,6 @@ def embed_real(network,img_path,device):
     padded_image[53:203,53:203,:] = image
     padded_image = np.moveaxis(padded_image,[0,1,2],[1,2,0])
     # padded_image = np.moveaxis(image,[0,1,2],[1,2,0]) 
-    print('undo this when go back to large image')
     padded_image = torch.Tensor(padded_image).unsqueeze(0).to(device)
     embed,cluster_assign = network(padded_image,'real',None)
     embedding_real = embed[0,:]
@@ -142,11 +141,13 @@ def find_nearest_neighbours(real_embedding,syn_embeddings,category,number_neares
     
     distances = euclidean_dist(relevant_model_embeddings,real_embedding)
 
-    sorted_distances,nearest_neighbours = distances.topk(number_nearest_neighbours, largest=False)
+
+    number_nn = min([number_nearest_neighbours,distances.shape[0]])
+    sorted_distances,nearest_neighbours = distances.topk(number_nn, largest=False)
 
     nn_dict = {}
     nn_dict["nearest_neighbours"] = []
-    for j in range(number_nearest_neighbours):
+    for j in range(number_nn):
         nn_info = converter.index_to_info_dict(start_category+nearest_neighbours[j].item())
         nn_info["path"] = '{}/{}/elev_{}_azim_{}.png'.format(nn_info["category"],nn_info["name"].replace(nn_info["category"] + '_',''),nn_info["elev"],nn_info["azim"])
         nn_info["model_index"] = start_category+nearest_neighbours[j].item() 
@@ -156,21 +157,38 @@ def find_nearest_neighbours(real_embedding,syn_embeddings,category,number_neares
     return nn_dict
 
 
+def filter_nearest_neighbours(nn_dict):
+
+    filtered = []
+    seen_models = []
+
+    for i in range(len(nn_dict["nearest_neighbours"])):
+        if nn_dict["nearest_neighbours"][i]["model"] not in seen_models:
+            filtered.append(nn_dict["nearest_neighbours"][i])
+            seen_models.append(nn_dict["nearest_neighbours"][i]["model"])
+
+
+    return {"nearest_neighbours":filtered}
+
+
 def visualise(nn,img_path,path_CAD_renders,save_path):
 
     fig = plt.figure(figsize=(6,6))
     plt.axis('off')
 
+    n = min([len(nn["nearest_neighbours"])+1,16])
 
-    for j in range(16):
-        nn_info = nn["nearest_neighbours"][j]
+
+    fig.add_subplot(4,4,1)
+    image = plt.imread(img_path)
+    plt.imshow(image)
+    plt.axis('off')
+
+    for j in range(1,n):
+        nn_info = nn["nearest_neighbours"][j-1]
         fig.add_subplot(4,4,j+1)
-        if j == 0:
-            image = plt.imread(img_path)
-        else:
-            image = plt.imread(path_CAD_renders + '/' + nn_info['path'])
-
-            plt.title('{} {:.2f} {} elev{} azim{}'.format(j,nn_info["distance"],nn_info["name"],nn_info["elev"],nn_info["azim"]),fontsize=4.5)
+        image = plt.imread(path_CAD_renders + '/' + nn_info['path'])
+        plt.title('{} {:.2f} {} elev{} azim{}'.format(j,nn_info["distance"],nn_info["name"],nn_info["elev"],nn_info["azim"]),fontsize=4.5)
         plt.imshow(image)
         plt.axis('off')
 
@@ -197,78 +215,94 @@ def get_dummy_config():
 if __name__ == "__main__":   
 
     print('Get nn retrieval')
+    print('aLways use gt category!!!!')
 
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)
 
-    target_folder = global_config["general"]["target_folder"]
-    checkpoint_file = global_config["retrieval"]["checkpoint_file"]
-    gpu = global_config["general"]["gpu"]
-    number_nn = global_config["retrieval"]["number_nearest_neighbours"]
+    if global_config["retrieval"]["gt"] == "False":
 
-    
-    if torch.cuda.is_available():
-        device = torch.device("cuda:{}".format(gpu))
-        torch.cuda.set_device(device)
-    else:
-        device = torch.device("cpu")
+        target_folder = global_config["general"]["target_folder"]
+        checkpoint_file = global_config["retrieval"]["checkpoint_file"]
+        gpu = global_config["general"]["gpu"]
+        number_nn = global_config["retrieval"]["number_nearest_neighbours"]
 
-    dummy_config_old_code = get_dummy_config()
+        with open(target_folder + '/global_stats/visualisation_images.json','r') as f:
+            visualisation_list = json.load(f)
 
-    path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_old_order.json'
-    # path_models_file = target_folder + '/models/model_list.json'
-    elev = global_config["models"]["elev"]
-    azim = global_config["models"]["azim"]
-
-    path_CAD_renders = global_config["general"]["models_folder_read"] + '/models/render_black_background'
-    # path_CAD_renders = '/data/cvfs/fml35/derivative_datasets/pix3d_new/own_data/rendered_models/model_blender_256_black_background'
-
-
-    converter = Converter(path_models_file,elev,azim)
-
-    network = load_network(dummy_config_old_code,device,checkpoint_file)
-    
-    with torch.no_grad():
-        syn_embedding_path = target_folder + '/models/syn_embedding_old_order_new_renders.npy'
-        if os.path.exists(syn_embedding_path):
-            syn_embeddings = torch.from_numpy(np.load(syn_embedding_path))
+        
+        if torch.cuda.is_available():
+            device = torch.device("cuda:{}".format(gpu))
+            torch.cuda.set_device(device)
         else:
-            syn_embeddings = embed_rendered(network,converter,path_CAD_renders,device)
-            np.save(syn_embedding_path,syn_embeddings.numpy())
+            device = torch.device("cpu")
 
-        # print('load old embeddings')
-        # syn_embeddings = torch.from_numpy(np.load(global_config["general"]["models_folder_read"] + '/models/syn_embedding_old_order.npy'))
-        # syn_embeddings = None
+        dummy_config_old_code = get_dummy_config()
 
-        for name in tqdm(os.listdir(target_folder + '/cropped_and_masked_small')):
+        path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_old_order.json'
+        # path_models_file = target_folder + '/models/model_list.json'
+        elev = global_config["models"]["elev"]
+        azim = global_config["models"]["azim"]
 
-            img_path = target_folder + '/cropped_and_masked_small/' + name  
+        path_CAD_renders = global_config["general"]["models_folder_read"] + '/models/render_black_background'
+        # path_CAD_renders = '/data/cvfs/fml35/derivative_datasets/pix3d_new/own_data/rendered_models/model_blender_256_black_background'
 
-            real_path = img_path.replace('/cropped_and_masked_small/','/embedding/').split('.')[0] + '.npy'
 
-            if os.path.exists(real_path):
-                real_embedding = np.load(real_path)
+        converter = Converter(path_models_file,elev,azim)
+
+        network = load_network(dummy_config_old_code,device,checkpoint_file)
+        
+        with torch.no_grad():
+            true_false_to_gt_predicted = {"True":"gt","False":"predicted"}
+            mask_type = true_false_to_gt_predicted[global_config["segmentation"]["use_gt"]]
+            syn_embedding_path = global_config["general"]["models_folder_read"] + '/models/syn_embedding_{}_{}.npy'.format(global_config["dataset"]["split"],mask_type)
+            if os.path.exists(syn_embedding_path):
+                print('load existing embedding! {}'.format(syn_embedding_path))
+                syn_embeddings = torch.from_numpy(np.load(syn_embedding_path))
             else:
-                real_embedding = embed_real(network,img_path,device)
-                np.save(real_path,real_embedding.numpy())
+                syn_embeddings = embed_rendered(network,converter,path_CAD_renders,device)
+            #     np.save(syn_embedding_path,syn_embeddings.numpy())
 
-            # with open(target_folder + '/segmentation_infos/' + name.replace('.png','.json'),'r') as file:
-            new_name =  name.split('_')[0] + '_' + name.split('_')[1] + '_' + str(int(name.split('_')[2].split('.')[0])).zfill(1) + '.json'
-            # with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as file:
-            with open(target_folder + '/segmentation_infos/' + new_name,'r') as file:
-                predicted_category = json.load(file)["predictions"]["category"]
-            
-            nn = find_nearest_neighbours(real_embedding,syn_embeddings,predicted_category,number_nn,converter)
+            # syn_embeddings = torch.from_numpy(np.load(global_config["general"]["models_folder_read"] + '/models/syn_embedding_old_order.npy'))
+            # syn_embeddings = None
+            for name in tqdm(os.listdir(target_folder + '/cropped_and_masked_small')):
+
+                img_path = target_folder + '/cropped_and_masked_small/' + name  
+
+                real_path = img_path.replace('/cropped_and_masked_small/','/embedding/').split('.')[0] + '.npy'
+
+                if os.path.exists(real_path):
+                    real_embedding = np.load(real_path)
+                else:
+                    real_embedding = embed_real(network,img_path,device)
+                    np.save(real_path,real_embedding.numpy())
+
+                # with open(target_folder + '/segmentation_infos/' + name.replace('.png','.json'),'r') as file:
+                new_name =  name.split('_')[0] + '_' + name.split('_')[1] + '_' + str(int(name.split('_')[2].split('.')[0])).zfill(1) + '.json'
+                # with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as file:
+                with open(target_folder + '/segmentation_infos/' + new_name,'r') as file:
+                    predicted_category = json.load(file)["predictions"]["category"]
+
+                with open(target_folder + '/gt_infos/' + name.split('_')[0] + '_' + name.split('_')[1] + '.json','r') as file:
+                    gt_infos = json.load(file)
+
+                predicted_category = gt_infos["category"]
+                
+                nn = find_nearest_neighbours(real_embedding,syn_embeddings,predicted_category,number_nn,converter)
+
+                if global_config["retrieval"]["only_different_models"]:
+                    nn = filter_nearest_neighbours(nn)
 
 
-            if global_config["general"]["visualise"] == "True":
-                save_path = img_path.replace('/cropped_and_masked_small/','/nn_vis/')
-                visualise(nn,img_path,path_CAD_renders,save_path)
+                if global_config["general"]["visualise"] == "True":
+                    if gt_infos["img"] in visualisation_list:
+                        save_path = img_path.replace('/cropped_and_masked_small/','/nn_vis/').split('.')[0] + '.png'
+                        visualise(nn,img_path,path_CAD_renders,save_path)
 
-            # with open(target_folder + '/nn_infos/' + name.replace('.png','.json'),'w') as f:
-            with open(target_folder + '/nn_infos/' + new_name,'w') as f:
-                json.dump(nn, f,indent=4)
+                # with open(target_folder + '/nn_infos/' + name.replace('.png','.json'),'w') as f:
+                with open(target_folder + '/nn_infos/' + new_name,'w') as f:
+                    json.dump(nn, f,indent=4)
 
 
 

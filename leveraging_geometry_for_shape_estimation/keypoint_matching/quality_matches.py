@@ -116,7 +116,8 @@ def get_pose_for_folder(global_config):
             if global_config["general"]["visualise"] == "True":
                 if gt_infos["img"] in visualisation_list:
 
-                    model_path = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
+                    # model_path = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
+                    model_path = global_config["dataset"]["pix3d_path"] + retrieval_list[i]["model"]
                     mesh = load_mesh(model_path,R,T,device)
 
                     rendered_image = render_mesh(w,h,f,mesh,device)

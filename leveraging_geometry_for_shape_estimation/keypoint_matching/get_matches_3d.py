@@ -25,15 +25,20 @@ def load_information_depth_camera(fov):
                             [0.0000, 0.0000, 1.0000, 0.0000]]])
 
     return P_proj
-    focal_length = (W /2) / np.tan(np.pi/6)
 
 
 
-def create_pixel_bearing(W,H,P_proj):
+
+
+def create_pixel_bearing(W,H,P_proj,device):
 
     assert W == H , "This function does not work if W and H diff, think need to change W and H in line above .view(H,W,4) but not sure if this is all"
     x = -(2 * (torch.linspace(0,W-1,W)+0.5)/W - 1)
     y = - (2 * (torch.linspace(0,H-1,H)+0.5)/H - 1)
+
+    x = x.to(device)
+    y = y.to(device)
+    P_proj = P_proj.to(device)
 
     ys,xs = torch.meshgrid(x,y)
 
@@ -52,7 +57,7 @@ def create_pixel_bearing(W,H,P_proj):
 
 
 
-def pb_and_depth_to_wc(pb_x,pb_y,pb_z,depth,elev,azim,mask):
+def pb_and_depth_to_wc(pb_x,pb_y,pb_z,depth,elev,azim,mask,device):
 
     cc_x = pb_x * depth
     cc_y = pb_y * depth
@@ -66,8 +71,8 @@ def pb_and_depth_to_wc(pb_x,pb_y,pb_z,depth,elev,azim,mask):
 
 
     R_mesh, T_mesh = look_at_view_transform(dist=1.2, elev=elev, azim=azim)
-    R_mesh = R_mesh[0]
-    T_mesh = T_mesh[0]
+    R_mesh = R_mesh[0].to(device)
+    T_mesh = T_mesh[0].to(device)
 
     cc_shape = cc.shape
     cc_translated = torch.transpose(torch.reshape(cc - T_mesh,(cc_shape[0]*cc_shape[1],cc_shape[2])),-1,-2)
@@ -113,10 +118,10 @@ def get_world_coordinates(wc,pixels_rendered):
 
 
 
-def get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W):
+def get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W,device):
 
     P_proj = load_information_depth_camera(fov)
-    pb_x,pb_y,pb_z = create_pixel_bearing(W,W,P_proj)
+    pb_x,pb_y,pb_z = create_pixel_bearing(W,W,P_proj,device)
 
     for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
         
@@ -128,19 +133,20 @@ def get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W)
             if os.path.exists(out_path):
                 continue
 
-
             depth_path = models_folder_read + '/models/depth/' + retrieval_list[i]["path"].replace('.png','.npy')
             depth = np.load(depth_path)
+            depth = torch.Tensor(depth).to(device)
+
             with open(target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
                 matches_orig_img_size = json.load(f)
-
 
             elev = retrieval_list[i]["elev"]
             azim = retrieval_list[i]["azim"]
 
             mask = (depth > -1)
 
-            wc_grid = pb_and_depth_to_wc(pb_x,pb_y,pb_z,depth,elev,azim,mask)
+            wc_grid = pb_and_depth_to_wc(pb_x,pb_y,pb_z,depth,elev,azim,mask,device)
+            wc_grid = wc_grid.cpu()
 
             pixels_rendered = np.array(matches_orig_img_size["pixels_rendered"])
 
@@ -162,10 +168,13 @@ def main():
     top_n_retrieval = global_config["keypoints"]["matching"]["top_n_retrieval"]
     fov = global_config["models"]["fov"]
     W = global_config["models"]["img_size"]
+
+    device = torch.device("cuda:{}".format(global_config["general"]["gpu"]))
+    torch.cuda.set_device(device)
     print('pb_and_depth_to_wc is new function')
     print("Get matches 3D")
 
-    get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W)
+    get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W,device)
     
 
     

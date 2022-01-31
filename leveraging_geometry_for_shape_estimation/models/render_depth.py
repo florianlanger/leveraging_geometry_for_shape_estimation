@@ -1,5 +1,5 @@
 
-
+print('start importing')
 import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -8,7 +8,6 @@ from PIL import Image
 import trimesh
 
 import numpy as np
-import pyopengv
 
 from tqdm import tqdm
 

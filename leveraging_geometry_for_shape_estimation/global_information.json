@@ -1,16 +1,20 @@
 {
     "general":
         {
-            "target_folder": "output",
+            "target_folder": "/scratch2/fml35/experiments/leveraging_geometry_for_shape/exp_104_gt_retrieval_s2_matches",
             "gpu": 0,
             "visualise": "True",
-            "visualisations_per_category": 10
+            "visualisations_per_category": 10,
+            "debug_set": "False",
+            "debug_single": "True",
+            "run_on_octopus": "True"
         },
     "dataset": 
         {
-            "pix3d_path": "data/pix3d",
+            "pix3d_path": "/scratch/fml35/datasets/pix3d_new/",
+            "pix3d_path_not_used": "/scratch/fml35/datasets/cubes/models/",
             "categories": ["bed","bookcase","chair","desk","misc","sofa","table","tool","wardrobe"],
-            "split": "s1"
+            "split": "s2"
         },
     "models": 
         {
@@ -29,18 +33,27 @@
             "max_bbox_length": 150,
             "img_size": 256 
         },
+    "line_detection":
+        {
+            "model_path": "/scratch/fml35/other_peoples_work/line_detection/mlsd_pytorch/models/mlsd_large_512_fp32.pth",
+            "threshold_for_filtering": 0.7
+        },
     "retrieval":
         {
-            "number_nearest_neighbours": 20
+            "gt": "True",
+            "number_nearest_neighbours": 700,
+            "only_different_models": false
         },
     "keypoints":
         {
             "detection":
                 {
-                    "weights_path": "models/superpoint_v1.pth",
+                    "weights_path": "/data/cornucopia/fml35/other_peoples_work/keypoints/SuperPoint/SuperPointPretrainedNetwork/superpoint_v1.pth",
                     "nms_dist": 4,
                     "conf_thresh": 0.015,
-                    "nn_thresh": 0.5
+                    "nn_thresh": 0.5,
+                    "size": [320,240],
+                    "percent_expand_bbox_filter": 0.2
                 },
             "matching":
                 {
@@ -50,7 +63,7 @@
 
                 }
         },
-    "pose_and_shape":
+        "pose_and_shape":
         {
             "pose":
                 {
@@ -68,11 +81,63 @@
                     "sensor_width": 32,
                     "number_visualisations_per_object": 1,
                     "absolute_pose_algorithm": "upnp"
+                },
+            "shape":
+                {
+                    "optimise_shape": "False",
+                    "planes": [[1,0,0.0,0],[0,1.0,0,0],[0,0,1,0.0]],
+                    "bounds":
+                        {
+                            "stretching": 0.6,
+                            "rotations": [5,60,20],
+                            "delta_T": 0.2
+                        },
+                    "scipy_lbfgs":
+                        {
+                            "maxcor": 10,
+                            "ftol": 1e-4,
+                            "gtol": 1e-05,
+                            "eps": 1e-08,
+                            "maxfun": 15000,
+                            "maxiter": 15000,
+                            "maxls": 20,
+                            "finite_diff_rel_step": "None"
+                        }
+                }
+            },
+        "pose_and_shape_probabilistic":
+        {
+            "use_probabilistic": "False",
+            "pose":
+                {
+                    "gt_z": "True",
+                    "tilt":{"range": 20,"steps": 20},
+                    "elev":{"range": 45,"steps": 45},
+                    "azim":{"range": 45,"steps": 45},
+                    "x":{"range": 0.3,"steps": 40},
+                    "y":{"range": 0.3,"steps": 40},
+                    "z":{"range": 0.2,"steps": 30}
+                },
+            "reproject_lines":
+                {
+                    "line_dir_3d_precise":"/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_26_points_on_edges_angle_20_lines_one_and_three_face/lines",
+                    "line_dir_3d_self_scanned":"/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_15_min_support_10_continuous/lines",
+                    "point_dir": "/scratch/fml35/experiments/leveraging_geometry_for_shape/test_output_all_s2/models/3d_points/3d_points_filtered_02_mean",
+                    "top_n_for_translation": 500,
+                    "multiplier_lines": 0.1,
+                    "multiplier_bbox": 0.1,
+                    "multiplier_points": 0.1,
+                    "point_threshold": 0.97,
+                    "min_length_line": 0.1,
+                    "signal": "lines",
+                    "enforce_same_length": true,
+                    "use_point_threshold": true
                 }
         },
     "evaluate_poses":
         {
             "metrics": ["F1@0.300000","F1@0.500000","F1@0.700000"],
-            "thresholds": [50,55,60,65,70,75,80,85,90,95]
+            "thresholds": [50,55,60,65,70,75,80,85,90,95],
+            "evaluate_all": false
         }
 }

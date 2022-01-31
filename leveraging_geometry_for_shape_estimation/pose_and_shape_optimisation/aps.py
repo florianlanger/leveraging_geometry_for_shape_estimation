@@ -34,6 +34,30 @@ def compute_ap(scores, labels, npos, device=None):
 
     return ap
 
+def compute_ap_return_extra(scores, labels, npos, device=None):
+    if device is None:
+        device = scores.device
+
+    if len(scores) == 0:
+        return 0.0
+    tp = labels == 1
+    fp = labels == 0
+    sc = scores
+    assert tp.size() == sc.size()
+    assert tp.size() == fp.size()
+    sc, ind = torch.sort(sc, descending=True)
+    tp = tp[ind].to(dtype=torch.float32)
+    fp = fp[ind].to(dtype=torch.float32)
+    tp = torch.cumsum(tp, dim=0)
+    fp = torch.cumsum(fp, dim=0)
+
+    # # Compute precision/recall
+    rec = tp / npos
+    prec = tp / (fp + tp)
+    ap = xVOCap(rec, prec, device)
+
+    return ap,rec,prec
+
 
 def xVOCap(rec, prec, device):
 
@@ -53,7 +77,7 @@ def xVOCap(rec, prec, device):
 
 
 
-def get_metrics_by_category(all_information,metrics,number_nn,thresholds,categories,indicator):
+def get_metrics_by_category(all_information,metrics,number_nn,thresholds,categories,indicator,min_or_max):
     metrics_by_category = {}
     for threshold in thresholds:
         metrics_by_category[threshold] = {}
@@ -84,9 +108,13 @@ def get_metrics_by_category(all_information,metrics,number_nn,thresholds,categor
                 if gt_cat == predicted_cat and all_information[i]["img"] not in already_covered_images[metric]:
 
                     list_of_reprojection_distances = [all_information[i]["metrics"][j][indicator] for j in range(min(number_nn,len(all_information[i]["metrics"])))]
-                    best_index = min(list_of_reprojection_distances)
+                    if min_or_max == 'min':
+                        best_value = min(list_of_reprojection_distances)
+                    elif min_or_max == 'max':
+                        best_value = max(list_of_reprojection_distances)
+                    # best_index = min(list_of_reprojection_distances)
 
-                    best_nn = list_of_reprojection_distances.index(best_index)
+                    best_nn = list_of_reprojection_distances.index(best_value)
 
                     F = float(all_information[i]["metrics"][best_nn][metric])
                     
@@ -229,6 +257,7 @@ def get_categories_counter(gt_dir_path,categories):
     return categories_dict
 
 
+
 def collect_all_predictions(target_folder,top_n_retrieval,indicator):
 
     collected_predictions = []
@@ -236,36 +265,95 @@ def collect_all_predictions(target_folder,top_n_retrieval,indicator):
     print('need to do change in here if want multiple correct predictions per image')
     print('collect predictions')
     for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
-        
-        with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as f:
-            segmentation = json.load(f)
+        try:
+            with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as f:
+                segmentation = json.load(f)
 
-        with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
-            gt_infos = json.load(f)
+            with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
+                gt_infos = json.load(f)
 
-        single_crop = {}
-        single_crop["gt_cat"] = gt_infos["category"]
-        single_crop["img"] = gt_infos["img"]
-        single_crop["predicted_cat"] = segmentation["predictions"]["category"]
-        single_crop["mask_score"] = segmentation["predictions"]["score"]
-        single_crop["metrics"] = []
+            single_crop = {}
+            single_crop["gt_cat"] = gt_infos["category"]
+            single_crop["img"] = gt_infos["img"]
+            single_crop["predicted_cat"] = segmentation["predictions"]["category"]
+            single_crop["mask_score"] = segmentation["predictions"]["score"]
+            single_crop["metrics"] = []
 
-        for i in range(top_n_retrieval):
+            for i in range(top_n_retrieval):
 
-            with open(target_folder + '/metrics/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
-                metrics = json.load(f)
+                with open(target_folder + '/metrics/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
+                    metrics = json.load(f)
 
-            with open(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
-                poses = json.load(f)
+                with open(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
+                    poses = json.load(f)
 
-            metrics[indicator] = poses[indicator]
-            
-            single_crop["metrics"].append(metrics)
+                metrics[indicator] = poses[indicator]
+                
+                single_crop["metrics"].append(metrics)
 
-        collected_predictions.append(single_crop)
+            collected_predictions.append(single_crop)
+        except:
+            pass
 
     return collected_predictions
+
+
             
+
+
+def filter_predictions(all_predictions):
+
+    filtered_predictions = []
+    for pred in all_predictions:
+        if pred["gt_cat"] == pred["predicted_cat"]:
+            filtered_predictions.append(pred)
+
+    second_stage_filtered = []
+    for i in range(len(filtered_predictions)):
+        F1 = filtered_predictions[i]["metrics"][0]["F1"]
+
+        other_F1s = [-1]
+        for j in range(len(filtered_predictions)):
+            if filtered_predictions[i]["img"] == filtered_predictions[j]["img"]:
+                if i != j:
+                    other_F1s.append(filtered_predictions[j]["metrics"][0]["F1"])
+                    # if np.abs(F1 - 65.08938598632) < 0.0001:
+                    #     print(filtered_predictions[j])
+        if (F1 > np.array(other_F1s)).all():
+            second_stage_filtered.append(filtered_predictions[i])
+
+        # if np.abs(F1 - 65.08938598632) < 0.0001:
+        #     print(filtered_predictions[i])
+        #     print(other_F1s)
+        
+
+    return second_stage_filtered
+
+def filter_predictions_mask_score(all_predictions):
+
+    filtered_predictions = []
+    for pred in all_predictions:
+        if pred["gt_cat"] == pred["predicted_cat"]:
+            filtered_predictions.append(pred)
+
+    second_stage_filtered = []
+    for i in range(len(filtered_predictions)):
+        score = filtered_predictions[i]["mask_score"]
+
+        other_scores = [-1]
+        for j in range(len(filtered_predictions)):
+            if filtered_predictions[i]["img"] == filtered_predictions[j]["img"]:
+                if i != j:
+                    other_scores.append(filtered_predictions[j]["mask_score"])
+        if (score > np.array(other_scores)).all():
+            second_stage_filtered.append(filtered_predictions[i])
+
+        # if np.abs(F1 - 65.08938598632) < 0.0001:
+        #     print(filtered_predictions[i])
+        #     print(other_F1s)
+        
+
+    return second_stage_filtered
 
 
 def write_aps(global_config):
@@ -279,16 +367,18 @@ def write_aps(global_config):
     number_nn = global_config["keypoints"]["matching"]["top_n_retrieval"]
     categories = global_config["dataset"]["categories"]
 
-    setting_to_metric = {'segmentation': 'avg_dist_furthest', 'keypoints': 'avg_dist_reprojected_keypoints', 'combined':'combined','meshrcnn':'meshrcnn','F1':'F1'}
+    setting_to_metric = {'segmentation': 'avg_dist_furthest', 'keypoints': 'avg_dist_reprojected_keypoints', 'combined':'combined','meshrcnn':'meshrcnn','F1':'F1','factor':'factor'}
+    setting_to_min_or_max = {'segmentation': 'min', 'keypoints': 'min', 'combined':'min','meshrcnn':'check','F1':'max','factor':'max'}
     indicator = setting_to_metric[global_config["pose_and_shape"]["pose"]["choose_best_based_on"]]
-
+    min_or_max = setting_to_min_or_max[global_config["pose_and_shape"]["pose"]["choose_best_based_on"]]
     categories_counter  = get_categories_counter(target_folder + '/gt_infos',categories)
 
     all_predictions = collect_all_predictions(target_folder,number_nn,indicator)
+    # filtered_predictions = filter_predictions_mask_score(all_predictions)
 
 
-
-    metrics_by_category = get_metrics_by_category(all_predictions,metrics,number_nn,thresholds,categories,indicator)
+    metrics_by_category = get_metrics_by_category(all_predictions,metrics,number_nn,thresholds,categories,indicator,min_or_max)
+    # metrics_by_category = get_metrics_by_category(filtered_predictions,metrics,number_nn,thresholds,categories,indicator,min_or_max)
     
     mean_F1, n_examples = find_mean_all_F1(metrics_by_category,metrics[0])
     line = 'Number examples: {} , Mean {} score: {}'.format(n_examples,metrics[0],mean_F1)
@@ -315,15 +405,16 @@ def write_aps(global_config):
         for category in aps[metric]:
             aps_mean[metric][category] = aps[metric][category]["mean"]
 
-    with open(target_folder  + '/global_stats/ap_values_shuffled_2.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_values.json', 'w') as f:
             json.dump(aps, f, indent=4)
 
-    with open(target_folder  + '/global_stats/ap_50_values_shuffled_2.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_50_values.json', 'w') as f:
         json.dump(aps_50, f, indent=4)
 
-    with open(target_folder  + '/global_stats/ap_mean_values_shuffled_2.json', 'w') as f:
+    with open(target_folder  + '/global_stats/ap_mean_values.json', 'w') as f:
         json.dump(aps_mean, f, indent=4)
     
+    print("aps_mean['F1@0.300000']",aps_mean['F1@0.300000'])
 
     # angle_dist_by_category = get_pose_diffs_by_category(all_information,config["number_nearest_neighbours"],indicator)
     # mean_angle_dist_by_category = get_mean_angle_dist_by_category(angle_dist_by_category)

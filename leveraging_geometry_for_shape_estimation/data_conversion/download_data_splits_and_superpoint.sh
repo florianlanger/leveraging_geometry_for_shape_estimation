@@ -1,4 +1,4 @@
-wget -O leveraging_geometry_for_shape_estimation/keypoint_matching/demo_superpoint.py https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/demo_superpoint.py 
+wget -O leveraging_geometry_for_shape_estimation/keypoint_matching/demo_superpoint.py https://raw.github.com/magicleap/SuperPointPretrainedNetwork/blob/master/demo_superpoint.py 
 
 mkdir models
 wget -O models/superpoint_v1.pth https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/superpoint_v1.pth

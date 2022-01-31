@@ -37,8 +37,6 @@ def main():
             h,w = cv2.imread(img_path).shape[:2]
 
             mask = cv2.imread(mask_folder + '/' + name.split('.')[0] + '.png')
-            print(mask_folder + '/' + name.split('.')[0] + '.png')
-            print(mask.shape)
             mask_imantics = Mask(mask)
 
             info_folder = {}

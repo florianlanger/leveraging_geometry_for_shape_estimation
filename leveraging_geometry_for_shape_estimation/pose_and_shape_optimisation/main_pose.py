@@ -17,7 +17,7 @@ from utilities import add_minimal_pose_info_dict,get_information_best_pose
 
 def convert_pixel_to_bearings(pixels,f,w,h,sensor_width):
     """Input of pixel is (py,px), Output pixel bearing are in (x,y,z)"""
-    bearings = np.zeros((pixels.shape[0],3))
+    # bearings = np.zeros((pixels.shape[0],3))
 
     x = -(pixels[:,1] - w/2.) * sensor_width / w
     y = -(pixels[:,0] - h/2.) * sensor_width / w
@@ -46,6 +46,10 @@ def get_pred_t_gt_z(predicted_t,T_gt,device):
 
 def get_pose_for_folder(global_config):
 
+    print('MEANING: use avg dist poinrtclouds ????')
+
+    print('Still have bug in find_distance_point_clouds, check dim last line')
+
     target_folder = global_config["general"]["target_folder"]
     models_folder_read = global_config["general"]["models_folder_read"]
     top_n_retrieval = global_config["keypoints"]["matching"]["top_n_retrieval"]
@@ -67,13 +71,14 @@ def get_pose_for_folder(global_config):
         
         for i in range(top_n_retrieval):
         # for i in range(1):
-            output_path = target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
+            output_path = target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '_00' + '.json'
             if os.path.exists(output_path):
                 continue
 
             elev = retrieval_list[i]["elev"]
             azim = retrieval_list[i]["azim"]
-            model_path = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
+            model_path = global_config["dataset"]["pix3d_path"] + retrieval_list[i]["model"]
+            # model_path = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
 
             with open(target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
                 matches_orig_img_size = json.load(f)
@@ -87,8 +92,6 @@ def get_pose_for_folder(global_config):
             correct_matches = None
             n_matches = wc_matches_all.shape[0]
             all_4_indices,n_keypoints_pose = create_all_4_indices(n_matches,pose_config,correct_matches)
-
-
 
             # convert pixel to pixel bearing
             f = gt_infos["focal_length"]
@@ -168,6 +171,8 @@ def get_pose_for_folder(global_config):
                 if pose_config["use_gt_z"] == "True":
                     T_gt = gt_infos["trans_mat"]
                     predicted_t = get_pred_t_gt_z(predicted_t,T_gt,device)
+                    # print('Use gt T whole not just z')
+                    # predicted_t = torch.Tensor(T_gt).to(device).tile(predicted_t.shape[0],1).unsqueeze(1)
 
 
                 indices_4 = all_indices[idx*pose_config["batch_size"]:(idx+1)*pose_config["batch_size"]]
@@ -185,7 +190,7 @@ def get_pose_for_folder(global_config):
 
             n_poses_evaluate = min(pose_config["number_visualisations_per_object"],len(all_pose_information))
             # setting_to_metric = {'segmentation': 'avg_dist_furthest', 'keypoints': 'avg_dist_reprojected_keypoints', 'combined':'combined', 'F1':'F1'}
-            print('use avg dist poinrtclouds')
+
             setting_to_metric = {'segmentation': 'avg_dist_pointclouds', 'keypoints': 'avg_dist_reprojected_keypoints', 'combined':'combined', 'F1':'F1'}
             setting_to_min_max = {'segmentation': 'min', 'keypoints': 'min', 'combined':'min', 'F1':'max'}
             metric = setting_to_metric[pose_config["choose_best_based_on"]]
@@ -216,8 +221,9 @@ def main():
     with open(global_info,'r') as f:
         global_config = json.load(f)
 
-    if global_config["pose_and_shape"]["shape"]["optimise_shape"] == "False":
-        get_pose_for_folder(global_config)
+    if global_config["pose_and_shape_probabilistic"]["use_probabilistic"] == "False":
+        if global_config["pose_and_shape"]["shape"]["optimise_shape"] == "False":
+            get_pose_for_folder(global_config)
     
 
     
@@ -225,5 +231,6 @@ def main():
 
 
 if __name__ == '__main__':
+    print('Main Pose')
     main()
 

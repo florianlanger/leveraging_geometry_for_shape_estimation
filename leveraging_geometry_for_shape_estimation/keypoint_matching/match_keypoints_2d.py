@@ -82,7 +82,7 @@ def pixel_cropped_to_original(pixel,bb,max_bbox_length,img_size):
 
 
 
-def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no_crossCheck,max_bbox_length,img_size,models_folder_read,visualise,visualisation_list):
+def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no_crossCheck,max_bbox_length,img_size,models_folder_read,visualise,visualisation_list,run_on_octopus):
 
     for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
 
@@ -128,9 +128,12 @@ def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no
                     path_rendered = models_folder_read + '/models/render_black_background/' + retrieval_list[i]["path"]
                     img_rendered = cv2.imread(path_rendered)
 
-
-                    real_cv = [cv2.KeyPoint(float(pts_real[0][i]),float(pts_real[1][i]),_size=1) for i in range(pts_real.shape[1])]
-                    rendered_cv = [cv2.KeyPoint(float(pts_rendered[0][i]),float(pts_rendered[1][i]),_size=1) for i in range(pts_rendered.shape[1])]
+                    if run_on_octopus == "False":
+                        real_cv = [cv2.KeyPoint(float(pts_real[0][i]),float(pts_real[1][i]),_size=1) for i in range(pts_real.shape[1])]
+                        rendered_cv = [cv2.KeyPoint(float(pts_rendered[0][i]),float(pts_rendered[1][i]),_size=1) for i in range(pts_rendered.shape[1])]
+                    elif run_on_octopus == "True":
+                        real_cv = [cv2.KeyPoint(float(pts_real[0][i]),float(pts_real[1][i]),size=1) for i in range(pts_real.shape[1])]
+                        rendered_cv = [cv2.KeyPoint(float(pts_rendered[0][i]),float(pts_rendered[1][i]),size=1) for i in range(pts_rendered.shape[1])]
 
                     img_match = visualise_matches(img_real,real_cv,img_rendered,rendered_cv,nested_matches)
                     cv2.imwrite(target_folder + '/matches_vis/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.png',img_match)
@@ -153,11 +156,12 @@ def main():
     max_bbox_length = global_config["segmentation"]["max_bbox_length"]
     img_size = global_config["segmentation"]["img_size"]
     models_folder_read = global_config["general"]["models_folder_read"]
+    run_on_octopus = global_config["general"]["run_on_octopus"]
 
     with open(target_folder + '/global_stats/visualisation_images.json','r') as f:
         visualisation_list = json.load(f)
     
-    get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no_crossCheck,max_bbox_length,img_size,models_folder_read,visualise,visualisation_list)
+    get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no_crossCheck,max_bbox_length,img_size,models_folder_read,visualise,visualisation_list,run_on_octopus)
 
     
 

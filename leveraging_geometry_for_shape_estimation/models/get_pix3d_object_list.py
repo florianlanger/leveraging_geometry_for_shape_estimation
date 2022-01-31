@@ -14,7 +14,7 @@ def list_models(pix3d_file,out_file):
     models["models"] = []
     names_already = []
 
-    for info in pix3d_list:
+    for info in pix3d_list[:5]:
 
         model_path = info["model"]
         split_path = model_path.split('/')

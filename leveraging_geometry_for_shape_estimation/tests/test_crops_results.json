@@ -1,0 +1,1 @@
+{"pixel_diffs_crops": [{"new_path": "/data/cornucopia/fml35/experiments/test_output_all_s2/cropped_and_masked/bed_0010_00.png", "old_path": "/data/cvfs/fml35/derivative_datasets/pix3d_new/own_data/real_images/img_150/s2_swin_epoch_66/predicted_segmentation_predicted_bbox/bed/0010_0.png", "n_diff": 0}]}

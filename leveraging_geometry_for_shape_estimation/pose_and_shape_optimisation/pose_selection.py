@@ -93,6 +93,8 @@ def compute_rendered_pixel(predicted_r,predicted_t,world_coordinates,f,w,h,senso
 
     world_coordinates= world_coordinates.float()
 
+    # print('world_coordinates',world_coordinates)
+
     if already_batched == False:
         world_coordinates = world_coordinates.unsqueeze(0).repeat(predicted_r.shape[0],1,1)
 
@@ -100,6 +102,8 @@ def compute_rendered_pixel(predicted_r,predicted_t,world_coordinates,f,w,h,senso
 
 
     camera_coordinates = torch.transpose(torch.matmul(predicted_r,torch.transpose(world_coordinates,-1,-2)),-1,-2) + predicted_t
+
+    # print('camera_coordinates',camera_coordinates)
 
 
     # now get pixel bearing by dividing by z/f
@@ -114,6 +118,8 @@ def compute_rendered_pixel(predicted_r,predicted_t,world_coordinates,f,w,h,senso
     pixel_rendered = torch.stack((py,px),dim=-1).to(int)
 
     pixel_rendered[~mask] = pixel_rendered[~mask] * 0 - 100000
+
+    # print('pixel_rendered',pixel_rendered)
 
     return pixel_rendered
 
@@ -232,8 +238,6 @@ def find_distance_point_clouds(segmentation_mask,pred_points,gt_points,device,co
 
     index = int(gt_points.shape[0] * config["fraction_of_points_for_dist"])
     # index = int(gt_points.shape[1] * config["fraction_of_points_for_dist"])
-
-    print('Still have bug in here, need to have ')
 
     avg_dist_furthest = (torch.mean(sorted_gt_to_pred_dists[:,:index],dim=1) + torch.mean(sorted_pred_to_gt_dists[:,:index],dim=1))/2
 

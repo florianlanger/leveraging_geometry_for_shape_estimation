@@ -20,6 +20,62 @@ from metrics import compare_meshes
 from pose_selection import stretch_3d_coordinates
 
 
+def get_distance(x1,x2):
+    return np.sum((np.array(x1) - np.array(x2))**2)**0.5
+
+def get_all_distances(t_gt,t_pred):
+    abs_dist = np.abs(np.array(t_gt) - np.array(t_pred))
+    length = np.sum(abs_dist**2)**0.5
+
+    magnitude_gt = np.sum(np.array(t_gt)**2)**0.5
+    normalised_length = length/magnitude_gt
+    normalised_dist = abs_dist/magnitude_gt
+
+    return length,abs_dist,normalised_length,normalised_dist
+
+def get_total_angle(m1,m2):
+
+    m = np.matmul(np.array(m1).T,np.array(m2))
+
+    value = (np.trace(m) - 1 )/ 2
+
+    clipped_value = np.clip(value,-0.9999999,0.999999)
+
+    angle = np.arccos(clipped_value)
+
+    return angle * 180 / np.pi
+
+def get_all_angles(m1,m2):
+
+    # elev_1,tilt_1,azim_1 = list(scipy_rot.from_matrix(m1).as_euler('zyx', degrees=True))
+    # elev_2,tilt_2,azim_2 = list(scipy_rot.from_matrix(m2).as_euler('zyx', degrees=True))
+    angles_1 = scipy_rot.from_matrix(m1).as_euler('zyx', degrees=True)
+    angles_2 = scipy_rot.from_matrix(m2).as_euler('zyx', degrees=True)
+    diff_angles = np.abs(angles_1 - angles_2)
+    two_angles_each = np.vstack((diff_angles,360-diff_angles))
+    min_angles = np.min(two_angles_each,axis=0)
+    diff_tilt,diff_azim,diff_elev = min_angles
+    # diff_elev,diff_tilt,diff_azim = np.abs(elev_1 - elev_2),np.abs(tilt_1 - tilt_2),np.abs(azim_1 - azim_2)
+    total_diff = get_total_angle(m1,m2)
+    return diff_tilt,diff_azim,diff_elev,total_diff
+    # pose_information["gt_angles"] = [rot[1],rot[2],rot[0]] = tilt azim elev
+
+def get_angles_and_dists(r_gt,r_pred,t_gt,t_pred):
+    diff_tilt,diff_azim,diff_elev,total_diff = get_all_angles(r_gt,r_pred)
+    length,abs_dist,normalised_length,normalised_dist = get_all_distances(t_gt,t_pred)
+
+    metric_dict = {}
+    metric_dict["total_angle_diff"] = total_diff
+    metric_dict["diff_tilt"] = diff_tilt
+    metric_dict["diff_azim"] = diff_azim
+    metric_dict["diff_elev"] = diff_elev
+    metric_dict["diff_absolute_length"] = length
+    metric_dict["diff_absolute_distances"] = abs_dist.tolist()
+    metric_dict["diff_normalised_length"] = normalised_length
+    metric_dict["diff_normalised_distances"] = normalised_dist.tolist()
+    return metric_dict
+
+
 def convert_metrics_to_json(shape_metrics):
 
     new_dict = {}
@@ -53,7 +109,8 @@ def F1_from_prediction(R_gt,T_gt,gt_obj,predicted_obj,R_total,T_total,device,pos
 
     # T_predicted_gt_z = torch.cat((T_total[:2],T_gt[2:]))
     pred_vertices_no_z = torch.transpose(torch.matmul(R_total,torch.transpose(pred_vertices,-1,-2)),-1,-2) + T_total
-    textures_predicted = Textures(verts_rgb=torch.ones((bs,pred_vertices_no_z.shape[0],3),device=device))
+    textures_predicted = Textures(verts_rgb=torch.ones((bs,pred_vertices_no_z.shape[1],3),device=device))
+
     pred_mesh_no_z = Meshes(verts=pred_vertices_no_z, faces=pred_faces, textures=textures_predicted)
 
     meshes_path = None
@@ -161,55 +218,80 @@ def get_score_for_folder(global_config):
     device = torch.device("cuda:{}".format(global_config["general"]["gpu"]))
     torch.cuda.set_device(device)
 
-    for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
-
-        # if not 'desk_0526_3' in name:
-        #     print('no ')
-        #     continue
+    # for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
         
-        with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as f:
+        # with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as f:
+        #     retrieval_list = json.load(f)["nearest_neighbours"]
+
+        # with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
+        #     gt_infos = json.load(f)
+
+        # for i in range(top_n_retrieval):
+            
+        #     out_path = target_folder + '/metrics/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
+        #     # if os.path.exists(out_path):
+        #     #     continue
+
+        #     with open(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
+        #         pose_info = json.load(f)
+    # for name in tqdm(os.listdir(target_folder + '/poses')):
+    for name in tqdm(os.listdir(target_folder + '/selected_nn')):
+        with open(target_folder + '/selected_nn/' + name,'r') as f:
+            selected = json.load(f)
+        number_nn = selected["selected_nn"]
+        
+        with open(target_folder + '/nn_infos/' + name,'r') as f:
             retrieval_list = json.load(f)["nearest_neighbours"]
 
         with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
             gt_infos = json.load(f)
 
-        for i in range(top_n_retrieval):
-            
-            out_path = target_folder + '/metrics/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
-            # if os.path.exists(out_path):
-            #     continue
+        name_pose = name.split('.')[0] + '_' + str(number_nn).zfill(3) + '_' + str(selected["selected_orientation"]).zfill(2) + '.json'
 
-            with open(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
-                pose_info = json.load(f)
+        out_path = target_folder + '/metrics/' + name_pose
+        if os.path.exists(out_path):
+            continue
 
-            # predicted obj
-            model_path_pred = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
-            R_pred = torch.Tensor(pose_info["predicted_r"]).to(device).unsqueeze(0)
-            T_pred = torch.Tensor(pose_info["predicted_t"]).to(device).unsqueeze(0)
-            predicted_obj = load_obj(model_path_pred,device=device,create_texture_atlas=False, load_textures=False)
-            
+        with open(target_folder + '/poses/' + name_pose,'r') as f:
+            pose_info = json.load(f)
 
-            # gt obj
-            # model_path_gt = models_folder_read + "/models/remeshed/" + gt_infos["model"].replace('model/','')
-            model_path_gt = global_config["dataset"]["pix3d_path"] + gt_infos["model"]
-            R_gt = gt_infos["rot_mat"]
-            T_gt = gt_infos["trans_mat"]
-            gt_obj = load_obj(model_path_gt,device=device,create_texture_atlas=False, load_textures=False)
+        # predicted obj
+        # model_path_pred = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
+        # number_nn = int(name.rsplit('_',2)[1].split('_')[0]) #.split('.')[0])
+        number_nn = selected["selected_nn"]
+        model_path_pred = global_config["dataset"]["pix3d_path"] + retrieval_list[number_nn]["model"]
+        R_pred = torch.Tensor(pose_info["predicted_r"]).to(device).unsqueeze(0)
+        T_pred = torch.Tensor(pose_info["predicted_t"]).to(device).unsqueeze(0)
+        R_gt = gt_infos["rot_mat"]
+        T_gt = gt_infos["trans_mat"]
 
-
-            if global_config["pose_and_shape"]["shape"]["optimise_shape"] == "False":
-                _,_,shape_metrics = F1_from_prediction(R_gt,T_gt,gt_obj,predicted_obj,R_pred,T_pred,device,None,False,None,None)
-            elif global_config["pose_and_shape"]["shape"]["optimise_shape"] == "True":
-                print('Unsqueeze ?')
-                predicted_stretching = torch.Tensor(pose_info["predicted_stretching"]).to(device).unsqueeze(0).to(device)
-                planes = torch.Tensor(global_config["pose_and_shape"]["shape"]["planes"]).to(device)
-                _,_,shape_metrics = F1_from_prediction_shape(R_gt,T_gt,gt_obj,predicted_obj,R_pred,T_pred,predicted_stretching,planes,device,None,False,None,None)
+        
+        predicted_obj = load_obj(model_path_pred,device=device,create_texture_atlas=False, load_textures=False)
         
 
-            shape_metrics = convert_metrics_to_json(shape_metrics)
 
-            with open(out_path,'w') as f:
-                json.dump(shape_metrics,f,indent=4)
+        model_path_gt = global_config["dataset"]["pix3d_path"] + gt_infos["model"]
+        gt_obj = load_obj(model_path_gt,device=device,create_texture_atlas=False, load_textures=False)
+
+
+        if global_config["pose_and_shape"]["shape"]["optimise_shape"] == "False":
+            _,_,shape_metrics = F1_from_prediction(R_gt,T_gt,gt_obj,predicted_obj,R_pred,T_pred,device,None,False,None,None)
+        elif global_config["pose_and_shape"]["shape"]["optimise_shape"] == "True":
+            print('Unsqueeze ?')
+            predicted_stretching = torch.Tensor(pose_info["predicted_stretching"]).to(device).unsqueeze(0).to(device)
+            planes = torch.Tensor(global_config["pose_and_shape"]["shape"]["planes"]).to(device)
+            _,_,shape_metrics = F1_from_prediction_shape(R_gt,T_gt,gt_obj,predicted_obj,R_pred,T_pred,predicted_stretching,planes,device,None,False,None,None)
+    
+
+        shape_metrics = convert_metrics_to_json(shape_metrics)
+        # shape_metrics = {}
+
+        pose_metrics = get_angles_and_dists(R_gt,pose_info["predicted_r"],T_gt,pose_info["predicted_t"])
+        
+        combined_metrics = {**shape_metrics, **pose_metrics}
+
+        with open(out_path,'w') as f:
+            json.dump(combined_metrics,f,indent=4)
 
 
 
@@ -225,4 +307,5 @@ def main():
     get_score_for_folder(global_config)
 
 if __name__ == '__main__':
+    print('Compute metrics')
     main()
