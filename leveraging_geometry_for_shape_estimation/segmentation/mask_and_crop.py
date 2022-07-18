@@ -12,6 +12,7 @@ import imageio
 
 def main():
     print('mask and crop')
+    print('Continue if bbox 0 in width or height')
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)
@@ -25,7 +26,7 @@ def main():
     # debug
     all_overall_names = {}
 
-    for name in tqdm(os.listdir(target_folder + '/bbox_overlap')):
+    for name in tqdm(sorted(os.listdir(target_folder + '/bbox_overlap'))):
 
 
             current_overall_name = name.split('_')[0] + '_' + name.split('_')[1]
@@ -41,8 +42,7 @@ def main():
             with open(target_folder + '/segmentation_infos/' + name,'r') as file:
                 segmentation_infos = json.load(file)
 
-            if bbox_infos['valid'] and bbox_infos['correct_category']:
-
+            if bbox_infos['valid'] == True and bbox_infos['correct_category'] == True:
 
 
                 mask_path = target_folder + '/segmentation_masks/' + name.replace('.json','.png')
@@ -52,13 +52,8 @@ def main():
 
                 out_path = target_folder + '/cropped_and_masked_small/' + name.replace('.json','.' + old_ending)
 
-                if 'bed_0109_1' in name:
-                    print(bbox_infos)
-                    print(out_path)
-                    print(mask_path)
-
-                if os.path.exists(out_path):
-                    continue
+                # if os.path.exists(out_path):
+                #     continue
 
                 # mask_path = target_folder + '/segmentation_masks/' + name.replace('.json','.' + old_ending)
                 # mask_path = '/data/cornucopia/fml35/experiments/test_output_all_s2/segmentation_masks/' + name.replace('.json','.png')
@@ -79,6 +74,9 @@ def main():
                 cropped_image = real_image.crop(bbox)
                 (w, h) = cropped_image.size
 
+                if not (w > 0 and h > 0):
+                    continue 
+
                 if h >= w: 
                     new_h = target_size
                     new_w = int(np.round(new_h/float(h) * w))
@@ -86,6 +84,8 @@ def main():
                     new_w = target_size
                     new_h = int(np.round(new_w/float(w) * h))
                 
+                # if not new_w > 0 or not new_h > 0:
+                #     continue 
 
                 resized_im = cropped_image.resize((new_w,new_h))
 

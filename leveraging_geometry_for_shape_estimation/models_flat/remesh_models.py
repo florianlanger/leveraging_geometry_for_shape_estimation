@@ -37,7 +37,7 @@ def main():
 
     for j in range(0,len(model_list)):
         
-        obj_path = global_config["dataset"]["pix3d_path"] + model_list[j]["name"] + '.obj'
+        obj_path = global_config["dataset"]["dir_path"] + model_list[j]["name"] + '.obj'
         verts,faces,_ = remesh(obj_path,global_config["models"]["max_edge_length_remesh"],device)
         out_path = global_config["general"]["target_folder"] + "/models/remeshed/" +  model_list[j]["name"] + '.obj'
         save_obj(out_path,verts,faces)

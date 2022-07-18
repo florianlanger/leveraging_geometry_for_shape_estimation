@@ -141,7 +141,7 @@ def main():
         if not os.path.exists(model_path):
             os.mkdir(model_path)
     
-        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["pix3d_path"] + model_list[j]["name"] + '.obj')
+        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["dir_path"] + model_list[j]["name"] + '.obj')
         obj_object = bpy.context.selected_objects[0]
 
         # remove material

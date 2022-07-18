@@ -24,15 +24,17 @@ def main():
     with open(global_info,'r') as f:
         global_config = json.load(f)
 
-    target_folder = global_config["general"]["target_folder"]
-    image_folder = global_config["general"]["image_folder"]
-    categories = global_config["dataset"]["categories"]
-    vis_per_cat = global_config["general"]["visualisations_per_category"]
+    if global_config["dataset"]["which_dataset"] == 'pix3d':
 
-    img_list = get_img_list(image_folder,categories,vis_per_cat)
+        target_folder = global_config["general"]["target_folder"]
+        image_folder = global_config["general"]["image_folder"]
+        categories = global_config["dataset"]["categories"]
+        vis_per_cat = global_config["general"]["visualisations_per_category"]
 
-    with open(target_folder + '/global_stats/visualisation_images.json','w') as f:
-        json.dump(img_list,f)
+        img_list = get_img_list(image_folder,categories,vis_per_cat)
+
+        with open(target_folder + '/global_stats/visualisation_images.json','w') as f:
+            json.dump(img_list,f)
 
 if __name__ == '__main__':
     print('Create visualisation list')

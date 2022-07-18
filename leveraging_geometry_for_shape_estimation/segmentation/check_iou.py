@@ -42,6 +42,11 @@ def calculate_mask_overlap(gt_mask_rle,predicted_mask_path):
     with open(predicted_mask_path, "rb") as f:
         pred_mask = torch.tensor(np.asarray(Image.open(f), dtype=np.float32) / 255.0)
     pred_mask = (pred_mask > 0).to(dtype=torch.uint8)  # binarize mask
+
+    if len(pred_mask.shape) == 3:
+        # print('Dangerous')
+        pred_mask = pred_mask[:,:,0]
+
     pred_rles = [mask_util.encode(np.array(pred_mask[:, :, None], order="F", dtype="uint8"))[0]]
 
     miou = mask_util.iou(pred_rles, gt_mask_rle, [0])
@@ -51,6 +56,8 @@ def calculate_mask_overlap(gt_mask_rle,predicted_mask_path):
 
 def main():
     print('Check iou')
+    # print('IGNORE IMAGES WIHTOUT GT ANNOTATION')
+    # print('DONT Checl for category')
     # global_info = os.path.dirname(os.path.abspath(__file__)) + '/../global_information.json'
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
@@ -59,12 +66,14 @@ def main():
     target_folder = global_config["general"]["target_folder"]
     with open(target_folder + '/global_stats/visualisation_images.json','r') as f:
         visualisation_list = json.load(f)
-
+    # print('Dont visualise segmentation')
+    # visualisation_list = []
 
     target_folder = global_config["general"]["target_folder"]
     boxiou_threshold = global_config["segmentation"]["boxiou_threshold"]
 
-    for name in tqdm(os.listdir(target_folder + '/segmentation_masks')):
+
+    for name in tqdm(sorted(os.listdir(target_folder + '/segmentation_masks'))):
         out_path = target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json'
         # if os.path.exists(out_path):
         #     continue
@@ -78,22 +87,39 @@ def main():
         with open(target_folder + '/gt_infos/' + seg_info['img'].split('.')[0] + '.json','r') as f:
             gt_info = json.load(f)
         
-        gt_bbox = gt_info['bbox']
         pred_bbox = seg_info['predictions']['bbox']
         pred_category = seg_info['predictions']['category']
         
 
-        boxiou = calculate_box_overlap(gt_bbox,pred_bbox)
+        boxious = []
+        for i in range(len(gt_info['objects'])):
+            boxious.append(calculate_box_overlap(gt_info['objects'][i]["bbox"],pred_bbox).item())
+        
+        if not boxious:
+            boxiou = 0
+            index_gt_objects = None
+            gt_bbox = [0,0,0,0]
+            mask_iou = 0
+        
+        else:
+            boxiou = max(boxious)
+            index_gt_objects = boxious.index(boxiou)
+            gt_bbox = gt_info['objects'][index_gt_objects]['bbox']
 
-        gt_mask_path = target_folder + '/masks/' + gt_info["img"].split('.')[0] + '.png'
-        predicted_mask_path = target_folder + '/segmentation_masks/' + name
-        gt_mask_rle = load_gt_mask(gt_mask_path)
-        mask_iou = calculate_mask_overlap(gt_mask_rle,predicted_mask_path)
 
-        valid_predictions['box_iou'] = boxiou.item()
-        valid_predictions['valid'] = boxiou.item() > boxiou_threshold
+            gt_mask_path = target_folder + '/masks/' + gt_info["objects"][index_gt_objects]["mask_path"]
+            predicted_mask_path = target_folder + '/segmentation_masks/' + name
+            gt_mask_rle = load_gt_mask(gt_mask_path)
+
+            mask_iou = calculate_mask_overlap(gt_mask_rle,predicted_mask_path)
+
+        valid_predictions['box_iou'] = boxiou
+        valid_predictions['valid'] = boxiou > boxiou_threshold
         valid_predictions['mask_iou'] = mask_iou
-        valid_predictions['correct_category'] = pred_category == gt_info["category"]
+        # valid_predictions['correct_category'] = True
+        valid_predictions['correct_category'] = pred_category == gt_info["objects"][index_gt_objects]["category"]
+        # valid_predictions['correct_category'] = (pred_category == 'bed' and gt_info["objects"][index_gt_objects]["category"] == 'bed')
+        valid_predictions['index_gt_objects'] = index_gt_objects
 
         with open(out_path,'w') as bbox_file:
             json.dump(valid_predictions, bbox_file)
@@ -102,12 +128,14 @@ def main():
 
             img = cv2.imread(target_folder + '/images/' + gt_info["img"])
             pred_mask = cv2.imread(target_folder + '/segmentation_masks/' + name)
-            gt_mask = cv2.imread(target_folder + '/masks/' + gt_info["img"].split('.')[0] + '.png')
-            pred_text = "score " + str(np.round(seg_info["predictions"]["score"],4)) + '  ' + seg_info["predictions"]["category"] + ' mask_iou: ' + str(np.round(mask_iou,3)) + ' box_iou: ' + str(np.round(boxiou.item(),3))
-            gt_text = "GT: {}".format(gt_info["category"])
-
-            img = draw_segmentation_prediction(img, gt_mask, np.array([0,200,0]), np.array(gt_bbox)[np.newaxis,...],gt_text)
+            pred_text = "score " + str(np.round(seg_info["predictions"]["score"],4)) + '  ' + seg_info["predictions"]["category"] + ' mask_iou: ' + str(np.round(mask_iou,3)) + ' box_iou: ' + str(np.round(boxiou,3))
             img = draw_segmentation_prediction(img, pred_mask,  np.array([0,0,200]),np.array(pred_bbox)[np.newaxis,...],pred_text)
+
+            if index_gt_objects != None:
+                gt_text = "GT: {}".format(gt_info['objects'][index_gt_objects]["category"])
+                gt_mask = cv2.imread(target_folder + '/masks/' + gt_info["objects"][index_gt_objects]["mask_path"])
+                img = draw_segmentation_prediction(img, gt_mask, np.array([0,200,0]), np.array(gt_bbox)[np.newaxis,...],gt_text)
+
         
 
             # intersect = np.logical_and(gt_mask,pred_mask)

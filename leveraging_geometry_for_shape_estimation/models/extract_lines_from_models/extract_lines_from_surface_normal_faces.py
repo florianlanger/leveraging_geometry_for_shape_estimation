@@ -90,7 +90,8 @@ def find_edges(verts,faces,face_normals,vertex_id_to_face_id,mask_vertex_id_to_f
 
                 face_ids_pt_1 = vertex_id_to_face_id[indices[0]][mask_vertex_id_to_face_id[indices[0]]]
                 face_ids_pt_2 = vertex_id_to_face_id[indices[1]][mask_vertex_id_to_face_id[indices[1]]]
-                
+                print(face_ids_pt_1)
+                print(face_ids_pt_2)
                 faces_id_shared = intersection(face_ids_pt_1,face_ids_pt_2)
                 time_1 = time()
                 # print('intersection', time_1 - start)
@@ -98,6 +99,7 @@ def find_edges(verts,faces,face_normals,vertex_id_to_face_id,mask_vertex_id_to_f
                 if len(faces_id_shared) > 2:
                     n_1 = torch.Tensor([0,0,1])
                     n_2 = torch.Tensor([0,1,0])
+                    print(len(faces_id_shared))
                     continue
 
                 elif len(faces_id_shared) == 2:
@@ -207,37 +209,52 @@ def main():
     points_per_line_vis = 30
     # dont use min dist line
     min_dist_line = 0.05
-    pix_path = '/scratch/fml35/datasets/pix3d_new/'
-    target_folder = '/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_26_points_on_edges_angle_20_lines_one_and_three_face'
+    # pix_path = '/scratch/fml35/datasets/pix3d_new/'
+    # target_folder = '/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_26_points_on_edges_angle_20_lines_one_and_three_face'
 
-    with open("/data/cornucopia/fml35/experiments/exp_024_debug/models/model_list.json",'r') as f:
-            model_list = json.load(f)["models"]
+    global_info = sys.argv[1] + '/global_information.json'
+    with open(global_info,'r') as f:
+        global_config = json.load(f)
 
-    make_folder_check(target_folder)
+    target_folder = global_config["general"]["models_folder_read"] + '/models'
+    shape_dir_path = global_config["dataset"]["dir_path"]
+
+
+    with open(target_folder + "/model_list.json",'r') as f:
+        model_list = json.load(f)["models"]
+
+    # make_folder_check(target_folder)
     make_folder_check(target_folder + '/edge_points')
     make_folder_check(target_folder + '/lines')
     # copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/models/extract_lines_from_models',target_folder + '/code')
 
-    list_vertices = []
+    # list_vertices = []
+    # for j in tqdm(range(0,len(model_list))):
+    #     if 'SS_' in model_list[j]["model"]:
+    #         vert_number = 100000000
+    #     else:
+    #         verts_torch,faces_torch,_ = load_obj(shape_dir_path + model_list[j]["model"],load_textures=False)
+    #         vert_number = verts_torch.shape[0]
+    #     list_vertices.append(vert_number)
+
+    #     print(model_list[j]["model"], verts_torch.shape[0])
+
+    # indices = np.argsort(list_vertices)
+    # for j in tqdm(indices):
+
+
     for j in tqdm(range(0,len(model_list))):
         if 'SS_' in model_list[j]["model"]:
-            vert_number = 100000000
-        else:
-            verts_torch,faces_torch,_ = load_obj(pix_path + model_list[j]["model"],load_textures=False)
-            vert_number = verts_torch.shape[0]
-        list_vertices.append(vert_number)
+            continue
 
-    indices = np.argsort(list_vertices)
-    for j in tqdm(indices):
-    # for j in tqdm(range(0,len(model_list))):
-        if 'SS_' in model_list[j]["model"]:
+        if not 'bed' in model_list[j]["model"]:
             continue
 
         # if not 'IKEA_EKTORP' in model_list[j]["model"]:
         #     continue
 
-        verts_torch,faces_torch,_ = load_obj(pix_path + model_list[j]["model"],load_textures=False)
-        print(model_list[j]["model"], verts_torch.shape[0])
+        verts_torch,faces_torch,_ = load_obj(shape_dir_path + model_list[j]["model"],load_textures=False)
+        
         # continue
         faces_idx = faces_torch[0]
         # print('finding normals')

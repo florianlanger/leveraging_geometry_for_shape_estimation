@@ -99,7 +99,7 @@ if __name__ == "__main__":
         for k in tqdm(range(len(model_list))):
             # remesh model
             vertices,faces,textures = load_obj(global_config["general"]["target_folder"] + "/models/remeshed/" + model_list[k]["name"] + '.obj' ,load_textures=False,device=device)
-            # vertices,faces,textures = load_obj(global_config["dataset"]["pix3d_path"] + model_list[k]["model"],load_textures=False,device=device)
+            # vertices,faces,textures = load_obj(global_config["dataset"]["dir_path"] + model_list[k]["model"],load_textures=False,device=device)
             if not os.path.exists(global_config["general"]["target_folder"] + "/models/depth/" + model_list[k]["name"]):
                 os.mkdir(global_config["general"]["target_folder"] + "/models/depth/" + model_list[k]["name"])
             print(vertices.shape)

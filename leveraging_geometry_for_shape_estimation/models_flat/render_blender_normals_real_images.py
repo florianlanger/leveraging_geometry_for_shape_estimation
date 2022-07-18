@@ -112,7 +112,7 @@ def main():
     
 
     # load model list
-    with open(global_config["dataset"]["pix3d_path"] + "/pix3d.json",'r') as f:
+    with open(global_config["dataset"]["dir_path"] + "/pix3d.json",'r') as f:
         pix3d = json.load(f)
 
     for j in range(0,len(pix3d)):
@@ -131,7 +131,7 @@ def main():
             fov = np.arctan((global_config["pose_and_shape"]["pose"]["sensor_width"]*h/(2*w)) / pix3d[j]["focal_length"] ) * 2
         scene.camera.data.angle = fov # *(pi/180.0)
     
-        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["pix3d_path"] + '/' + pix3d[j]["model"])
+        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["dir_path"] + '/' + pix3d[j]["model"])
         # imported_object = bpy.ops.import_scene.obj(filepath='/scratch/fml35/experiments/leveraging_geometry_for_shape/test_output_all_s2/models/remeshed/' + pix3d[j]["model"].replace('model/',''))
         obj_object = bpy.context.selected_objects[0]
 

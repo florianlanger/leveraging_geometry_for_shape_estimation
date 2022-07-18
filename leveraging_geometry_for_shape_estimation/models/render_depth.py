@@ -8,6 +8,7 @@ from PIL import Image
 import trimesh
 
 import numpy as np
+import random
 
 from tqdm import tqdm
 
@@ -53,6 +54,8 @@ def create_setup(R,T,W,H,focal_length):
 
 if __name__ == "__main__":
 
+    print('THIS DOESNT WORK ON OCTOPUS / with oct_env')
+
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)
@@ -62,7 +65,8 @@ if __name__ == "__main__":
     H = global_config["models"]["img_size"]
 
     if torch.cuda.is_available():
-        device = torch.device("cuda:{}".format(global_config["general"]["gpu"]))
+        # device = torch.device("cuda:{}".format(global_config["general"]["gpu"]))
+        device = torch.device("cuda:1")
         torch.cuda.set_device(device)
     else:
         device = torch.device("cpu")
@@ -84,17 +88,29 @@ if __name__ == "__main__":
     azim = global_config["models"]["azim"]
 
     # load model list
-    with open(global_config["general"]["target_folder"] + "/models/model_list.json",'r') as f:
+    with open(global_config["general"]["target_folder"] + "/models/model_list_full.json",'r') as f:
         model_list = json.load(f)["models"]
 
-    make_empty_folder_structure(global_config["general"]["target_folder"] + "/models/remeshed/",global_config["general"]["target_folder"] + "/models/depth/")
+    # make_empty_folder_structure(global_config["general"]["target_folder"] + "/models/remeshed/",global_config["general"]["target_folder"] + "/models/depth/")
 
     with torch.no_grad():
-        for k in tqdm(range(len(model_list))):
+
+        numbers = list(range(len(model_list)))
+        random.shuffle(numbers)
+
+        # for k in tqdm(range(len(model_list))):
+        for k in tqdm(numbers):
+            out_path = global_config["general"]["target_folder"] + "/models/depth/" + model_list[k]["category"] + '/' + model_list[k]["model"].split('/')[2]
+            if os.path.exists('{}/elev_045_azim_337.5.npy'.format(out_path)):
+                continue
+
+            if '7e101ef3-7722-4af8-90d5-7c562834fabd' in out_path:
+                continue
             # remesh model
-            vertices,faces,textures = load_obj(global_config["general"]["target_folder"] + "/models/remeshed/" + model_list[k]["model"].replace('model/','') ,load_textures=False,device=device)
-            # vertices,faces,textures = load_obj(global_config["dataset"]["pix3d_path"] + model_list[k]["model"],load_textures=False,device=device)
-            
+            # vertices,faces,textures = load_obj(global_config["general"]["target_folder"] + "/models/remeshed/" + model_list[k]["model"].replace('model/','').replace('model_normalized.obj','model_normalized_own.obj') ,load_textures=False,device=device)
+            vertices,faces,textures = load_obj(global_config["general"]["target_folder"] + "/models/remeshed/" + model_list[k]["model"].replace('model_normalised/','') ,load_textures=False,device=device)
+            # vertices,faces,textures = load_obj(global_config["dataset"]["dir_path"] + model_list[k]["model"],load_textures=False,device=device)
+            # if os.path.exists('{}/elev_045_azim_337.5.npy'.format(out_path,elev_current,azim_current))
            
             T_mesh_this_object = T_mesh.unsqueeze(1).repeat(1,vertices.shape[0],1)
 
@@ -122,7 +138,7 @@ if __name__ == "__main__":
                     elev_current = str(int(elev[elev_index])).zfill(3)
                     azim_current = str(np.round(azim[azim_index],1)).zfill(3)
 
-                    out_path = global_config["general"]["target_folder"] + "/models/depth/" + model_list[k]["category"] + '/' + model_list[k]["model"].split('/')[2]
-                    print(depth[j][120:140,120:140])
+                    
+                    # print(depth[j][120:140,120:140])
                     np.save('{}/elev_{}_azim_{}.npy'.format(out_path,elev_current,azim_current),depth[j])
                     counter += 1

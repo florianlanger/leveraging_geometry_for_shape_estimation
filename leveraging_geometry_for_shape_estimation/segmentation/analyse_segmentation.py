@@ -19,7 +19,8 @@ def get_categories_counter(gt_dir_path,categories):
         with open(gt_dir_path+ '/' + name,'r') as f:
             gt_infos = json.load(f)
 
-        categories_dict[gt_infos["category"]] += 1
+        for object in gt_infos["objects"]:
+            categories_dict[object["category"]] += 1
     return categories_dict
 
 
@@ -64,7 +65,7 @@ def main():
     target_folder = global_config["general"]["target_folder"]
     categories_counter  = get_categories_counter(target_folder + '/gt_infos',categories)
 
-    correct_detected_images = []
+    correct_detected_gt_objects = []
 
     correct_cats = {}
     false_cats = {}
@@ -86,12 +87,14 @@ def main():
             gt_info = json.load(f)
 
         if bbox_overlap['valid']:
-            gt_cat = gt_info['category']
+            gt_cat = gt_info["objects"][bbox_overlap['index_gt_objects']]['category']
             predicted_cat = seg_info["predictions"]['category']
-            if bbox_overlap['correct_category'] and gt_info['img'] not in correct_detected_images:
+
+            gt_object = gt_info['img'] + 'object_' + str(bbox_overlap['index_gt_objects']).zfill(2)
+            if bbox_overlap['correct_category'] and gt_object not in correct_detected_gt_objects:
                 correct_cats[gt_cat] += 1
-                correct_detected_images.append(gt_info['img'])
-            elif bbox_overlap['correct_category'] and gt_info['img'] in correct_detected_images:
+                correct_detected_gt_objects.append(gt_object)
+            elif bbox_overlap['correct_category'] and gt_info['img'] in correct_detected_gt_objects:
                 double_cats[gt_cat] += 1
             elif not bbox_overlap['correct_category']:
                 false_cats[predicted_cat] += 1

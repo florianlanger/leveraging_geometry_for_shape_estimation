@@ -13,7 +13,7 @@ from scipy.spatial.transform import Rotation as scipy_rot
 
 from leveraging_geometry_for_shape_estimation.keypoint_matching.get_matches_3d import load_information_depth_camera,create_pixel_bearing,pb_and_depth_to_wc
 from probabilistic_formulation.utilities import create_all_possible_combinations,get_uvuv_p_from_superpoint,create_all_possible_combinations_uvuv_p_together
-from probabilistic_formulation.factors import factor_3d_consistency,factor_depth_positive,factor_world_coordinates_valid,factor_3d_consistency_no_depth,factor_super_point_match
+# from probabilistic_formulation.factors import factor_3d_consistency,factor_depth_positive,factor_world_coordinates_valid,factor_3d_consistency_no_depth,factor_super_point_match
 
 
 
@@ -25,14 +25,16 @@ def init_Rs(tilts,elevs,azims):
     elevs = np.linspace(elevs[0],elevs[1],elevs[2])
     azims = np.linspace(azims[0],azims[1],azims[2])
     Rs = np.zeros((azims.shape[0]*elevs.shape[0]*tilts.shape[0],3,3))
+    angles = np.zeros((azims.shape[0]*elevs.shape[0]*tilts.shape[0],3))
     counter = 0
     for tilt in tilts:
         for azim in azims:
             for elev in elevs:
                 Rs[counter] = scipy_rot.from_euler('zyx',[tilt,azim,elev], degrees=True).as_matrix()
+                angles[counter] = np.array([tilt,azim,elev])
                 counter += 1
             
-    return Rs
+    return Rs,angles
 
 
 def init_Ts(xs,ys,zs):
@@ -58,7 +60,7 @@ def get_R_limits(azim,elev,probabilistic_shape_config):
     return tilts,elevs,azims
 
 def get_T_limits(f,img_size,sensor_width,probabilistic_shape_config,bbox,gt_z):
-
+    
     img_size = np.array(img_size)
 
     bbox = np.array(bbox)
@@ -79,9 +81,21 @@ def get_T_limits(f,img_size,sensor_width,probabilistic_shape_config,bbox,gt_z):
     if probabilistic_shape_config["gt_z"] == "True":
         zs = (gt_z,gt_z,1)
     elif probabilistic_shape_config["gt_z"] == "False":
-        zs = (0,probabilistic_shape_config['z']["range"]*f,probabilistic_shape_config['z']["steps"])
+        zs = (0,probabilistic_shape_config['z']["range"],probabilistic_shape_config['z']["steps"])
 
     return (xs,ys,zs)
+
+def get_T_limits_around_gt(gt_T,probabilistic_shape_config):
+    xs = (gt_T[0] - probabilistic_shape_config['x']["range"],gt_T[0] + probabilistic_shape_config['x']["range"],probabilistic_shape_config['x']["steps"])
+    ys = (gt_T[1] - probabilistic_shape_config['y']["range"],gt_T[1] + probabilistic_shape_config['y']["range"],probabilistic_shape_config['y']["steps"])
+    
+    if probabilistic_shape_config["gt_z"] == "True":
+        zs = (gt_T[2],gt_T[2],1)
+    elif probabilistic_shape_config["gt_z"] == "False":
+        zs = (gt_T[2] - probabilistic_shape_config['z']["range"],gt_T[2] + probabilistic_shape_config['z']["range"],probabilistic_shape_config['z']["steps"])
+
+    return (xs,ys,zs)
+
 
 
 def get_pb_real_grid(w,h,f,sensor_width,device):
@@ -191,16 +205,23 @@ def get_nearest_pose_to_gt(xs,ys,zs,tilts,elevs,azims,gt_T,gt_R):
 
     return best_T,best_R
 
-def create_pose_info_dict(pred_R,pred_T,n_indices,max_factor,gt_pose_in_limits,gt_R,gt_T,best_R_possible,best_T_possible,xs,ys,zs,tilts,elevs,azims):
+def create_pose_info_dict(pred_R,pred_T,n_indices,max_factor,gt_pose_in_limits,gt_R,gt_T,best_R_possible,best_T_possible,xs,ys,zs,tilts,elevs,azims,gt_scaling,predicted_scaling,lines_3D_available,lines_2D_available,scaling_lines):
     pose_information = {}
     pose_information["predicted_r"] = pred_R.tolist()
     pose_information["predicted_t"] = pred_T.tolist()
+    pose_information["predicted_s"] = (predicted_scaling * np.array(scaling_lines)).tolist()
+    pose_information["predicted_s_normalised"] = predicted_scaling.tolist()
+
+    pose_information["lines_3D_available"] = lines_3D_available
+    pose_information["lines_2D_available"] = lines_2D_available
+
     pose_information["indices"] = list(range(n_indices))
     pose_information["factor"] = max_factor
     pose_information["in_limits"] = str(gt_pose_in_limits)
 
     pose_information["gt_R"] = gt_R
     pose_information["gt_T"] = gt_T
+    pose_information["gt_S_normalised"] = gt_scaling.tolist()
     rot = list(scipy_rot.from_matrix(gt_R).as_euler('zyx', degrees=True))
     pose_information["gt_angles"] = [rot[0],rot[1],rot[2]]
     pose_information["best_R_possible"] = best_R_possible
@@ -214,6 +235,7 @@ def create_pose_info_dict(pred_R,pred_T,n_indices,max_factor,gt_pose_in_limits,g
     pose_information["limits"]["tilts"] = tilts
     pose_information["limits"]["elevs"] = elevs
     pose_information["limits"]["azims"] = azims
+
     return pose_information
 
 

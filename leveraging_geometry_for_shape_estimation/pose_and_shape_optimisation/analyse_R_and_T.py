@@ -37,6 +37,9 @@ def analyse_R_and_T(global_config):
 
         with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
             gt_infos = json.load(f)
+
+        with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+            bbox_overlap = json.load(f)
             
         # with open(target_folder + '/segmentation_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
         #     segmentation_infos = json.load(f)
@@ -53,8 +56,8 @@ def analyse_R_and_T(global_config):
         # with open(target_folder + '/metrics/' + name,'r') as f:
         #     metrics = json.load(f)
 
-        if segmentation_infos["predictions"]["category"] == gt_infos["category"]:
-            trans_normalised[gt_infos["category"]].append(metrics["diff_normalised_length"])
+        if segmentation_infos["predictions"]["category"] == gt_infos["objects"][bbox_overlap['index_gt_objects']]["category"]:
+            trans_normalised[gt_infos["objects"][bbox_overlap['index_gt_objects']]["category"]].append(metrics["diff_normalised_length"])
 
     imgs = []
     for cat in global_config["dataset"]["categories"]:

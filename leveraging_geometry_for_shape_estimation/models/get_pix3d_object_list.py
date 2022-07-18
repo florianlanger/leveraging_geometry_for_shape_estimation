@@ -38,7 +38,7 @@ if __name__ == '__main__':
         global_config = json.load(f)
 
 
-    pix3d_file = global_config["dataset"]["pix3d_path"]  + 'pix3d.json'
+    pix3d_file = global_config["dataset"]["dir_path"]  + 'pix3d.json'
     out_file = global_config["general"]["target_folder"] + '/models/model_list.json'
 
     list_models(pix3d_file,out_file)

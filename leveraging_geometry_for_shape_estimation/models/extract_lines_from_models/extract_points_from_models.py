@@ -78,6 +78,28 @@ def main():
 
         save_ply(target_folder + '/edge_points/' + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',edge_points)
 
+def main_scannet():
+
+    n_points = 50000
+    n_nn = 5
+    angle_threshold_degree = 20
+    shape_dir = '/scratch2/fml35/datasets/shapenet_v2/ShapeNetRenamed/'
+    target_folder = '/scratch2/fml35/experiments/leveraging_geometry_for_shape/exp_117_scannet_models/models/3d_lines/exp_01'
+
+    with open("/scratch2/fml35/experiments/leveraging_geometry_for_shape/exp_117_scannet_models/models/model_list.json",'r') as f:
+            model_list = json.load(f)["models"]
+
+    make_folder_check(target_folder)
+    make_folder_check(target_folder + '/edge_points')
+    # copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/models/extract_lines_from_models',target_folder + '/code')
+
+    for j in tqdm(range(0,len(model_list))):
+
+        sample_points,sample_normals = load_points_normals(shape_dir + model_list[j]["model"],n_points)
+        edge_points = find_edge_points(sample_points,sample_normals,n_nn,angle_threshold_degree)
+
+        save_ply(target_folder + '/edge_points/' + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',edge_points)
+
 
 if __name__ == '__main__':
-    main()
+    main_scannet()

@@ -55,7 +55,7 @@ def draw_text(img, pos, text, font_scale=0.35,color_bg=_GREEN,color_font=_GRAY,f
     return img
 
 
-def draw_boxes(img, boxes, thickness=1):
+def draw_boxes(img, boxes, thickness=1,color=(0,255,0)):
     """
     Draw boxes on an image.
 
@@ -71,7 +71,7 @@ def draw_boxes(img, boxes, thickness=1):
         assert boxes.ndim == 2, boxes.shape
     for box in boxes:
         (x0, y0, x1, y1) = (int(x + 0.5) for x in box)
-        img = cv2.rectangle(img, (x0, y0), (x1, y1), color=_GREEN, thickness=thickness)
+        img = cv2.rectangle(img, (x0, y0), (x1, y1), color=color, thickness=thickness)
     return img
 
 

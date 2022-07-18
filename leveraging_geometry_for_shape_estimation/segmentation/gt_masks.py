@@ -17,38 +17,40 @@ def main():
 
         target_folder = global_config["general"]["target_folder"]
         mask_folder = global_config["general"]["mask_folder"]
-        image_folder = global_config["general"]["image_folder"]
+        # image_folder = global_config["general"]["image_folder"]
 
 
-        for name in tqdm(os.listdir(image_folder)):
-
-            first_name = name.split('.')[0]
-    
-            detection_name = first_name + '_' + str(0)
-
-            out_path = target_folder + '/segmentation_masks/' + detection_name + '.png'
-            if os.path.exists(out_path):
-                continue
+        for name in tqdm(os.listdir(mask_folder)):
 
 
-            img_path = image_folder + '/' + name
+            out_path = target_folder + '/segmentation_masks/' + name
 
 
-            h,w = cv2.imread(img_path).shape[:2]
+            with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
+                gt_infos = json.load(f)
 
-            mask = cv2.imread(mask_folder + '/' + name.split('.')[0] + '.png')
+            object_id = int(name.rsplit('_',1)[-1].split('.')[0])
+
+            # if os.path.exists(out_path):
+            #     continue
+
+
+            # img_path = image_folder + '/' + name
+
+            mask = cv2.imread(mask_folder + '/' + name)
+            h,w = mask.shape[:2]
             mask_imantics = Mask(mask)
 
             info_folder = {}
-            info_folder["detection"] = detection_name
-            info_folder["img"] = name
+            info_folder["detection"] = name.split('.')[0]
+            info_folder["img"] = gt_infos["img"]
             info_folder["img_size"] = [w,h]
             info_folder["predictions"] = {}
             info_folder["predictions"]["bbox"] = list(mask_imantics.bbox())
-            info_folder["predictions"]["category"] = name.split('_')[0]
+            info_folder["predictions"]["category"] = gt_infos["objects"][object_id]["category"]
             info_folder["predictions"]["score"] = 1.0
 
-            with open(target_folder + '/segmentation_infos/' + detection_name + '.json','w') as f:
+            with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','w') as f:
                 json.dump(info_folder, f)
 
             

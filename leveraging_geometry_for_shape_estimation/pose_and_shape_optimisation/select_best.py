@@ -56,15 +56,30 @@ def get_best_nn(target_folder,top_n_retrieval,indicator,min_or_max,categories,ev
         cats_best_possible_orientation[cat] = []
         cats_best_combined[cat] = []
 
-    for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
+    count_no_retrieval = 0
+   
+    for name in tqdm(sorted(os.listdir(target_folder + '/cropped_and_masked'))):
+        # if not "scene0663_01-000000" in name and not "scene0653_00-001300" in name:
+        #     continue
+
 
         indicator_scores = []
         Fs = []
 
+        if not os.path.exists(target_folder + '/nn_infos/' + name.split('.')[0] + '.json'):
+            count_no_retrieval += 1
+            continue
+
         with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as open_f:
             retrieval_list = json.load(open_f)["nearest_neighbours"]
 
+        with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+            bbox_overlap = json.load(f)
+
         n_neighbours = min([top_n_retrieval,len(retrieval_list)])
+
+        if n_neighbours == 0:
+            count_no_retrieval += 1
 
         for i in range(n_neighbours):
 
@@ -89,14 +104,11 @@ def get_best_nn(target_folder,top_n_retrieval,indicator,min_or_max,categories,ev
         elif min_or_max == 'max':
             best_value = max(indicator_scores)
 
-        print(indicator_scores)
-        print(best_value)
         
         selected = indicator_scores.index(best_value)
         selected_nn = selected // n_rotations
         selected_orientation = selected % n_rotations
 
-        print(selected_nn,selected_orientation)
 
         with open(target_folder + '/selected_nn/' + name.split('.')[0] + '.json','w') as f:
             json.dump({"selected_nn":selected_nn, 'selected_orientation':selected_orientation},f)
@@ -107,16 +119,20 @@ def get_best_nn(target_folder,top_n_retrieval,indicator,min_or_max,categories,ev
             best_nn = best_possible // n_rotations
             best_orientation = best_possible % n_rotations
 
-            cats_best_possible_nn[gt_infos['category']].append(selected_nn == best_nn)
-            cats_best_possible_orientation[gt_infos['category']].append(selected_orientation == best_orientation)
-            cats_best_combined[gt_infos['category']].append(selected_nn == best_nn and selected_orientation == best_orientation)
+            gt_cat = gt_infos["objects"][bbox_overlap['index_gt_objects']]['category']
+
+            cats_best_possible_nn[gt_cat].append(selected_nn == best_nn)
+            cats_best_possible_orientation[gt_cat].append(selected_orientation == best_orientation)
+            cats_best_combined[gt_cat].append(selected_nn == best_nn and selected_orientation == best_orientation)
 
 
 
             with open(target_folder + '/selected_nn/' + name.split('.')[0] + '.json','w') as f:
                 json.dump({"selected_nn":selected_nn,'best_nn': best_nn, 'selected_orientation':selected_orientation,'best_orientation':best_orientation},f)
 
-
+    print('N cropped_and_masked ',len(os.listdir(target_folder + '/cropped_and_masked')))
+    print('N no retrieval ', count_no_retrieval)
+    print('remaining ',len(os.listdir(target_folder + '/cropped_and_masked')) - count_no_retrieval)
     return cats_best_possible_nn,cats_best_possible_orientation,cats_best_combined
 
 
@@ -151,7 +167,7 @@ def write_aps(global_config):
 
 
 if __name__ == '__main__':
-
+    print('Select BEst ')
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)

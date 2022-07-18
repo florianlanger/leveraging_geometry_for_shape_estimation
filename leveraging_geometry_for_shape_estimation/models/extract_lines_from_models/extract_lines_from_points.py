@@ -118,9 +118,61 @@ def extract_lines_from_points(points_optimise,dist_threshold,n_lines,n_steps,min
     return extracted_lines.cpu(),remaining_points.cpu()
 
 
-def main():
+# def main():
 
-    target_folder = '/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_04'
+#     target_folder = '/scratch/fml35/datasets/pix3d_new/own_data/rendered_models/3d_lines/exp_04'
+    
+#     n_lines = 100
+#     n_steps = 1000
+#     min_n_support_points = 5
+#     dist_threshold_squared = 0.02**2
+
+#     points_per_line_vis = 100
+
+#     n_repeats = 5
+    
+#     with open("/data/cornucopia/fml35/experiments/exp_024_debug/models/model_list.json",'r') as f:
+#             model_list = json.load(f)["models"]
+
+#     for i in range(n_repeats):
+#         make_folder_check(target_folder + '/remainig_points_{}'.format(i+1))
+#         make_folder_check(target_folder + '/vis_lines_{}'.format(i+1))
+#     make_folder_check(target_folder + '/vis_lines_combined')
+#     # copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation/models/extract_lines_from_models',target_folder + '/code')
+
+#     for j in tqdm(range(0,len(model_list))):
+#         j = np.random.randint(0,len(model_list))
+
+#         for k in range(n_repeats):
+#             if k == 0:
+#                 path = target_folder + '/edge_points/' + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply'
+#             else:
+#                 path = target_folder + '/remainig_points_{}/'.format(k) + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply'
+
+#             points_optimise,_ = load_ply(path)
+#             extracted_lines,remaining_points = extract_lines_from_points(points_optimise,dist_threshold_squared,n_lines,n_steps,min_n_support_points)
+        
+#             points_vis_line = sample_points_from_lines(extracted_lines,points_per_line_vis)
+#             save_ply(target_folder + '/vis_lines_{}/'.format(k+1) + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',points_vis_line)
+#             if remaining_points.shape[0] != 0:
+#                 save_ply(target_folder + '/remainig_points_{}/'.format(k+1) + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',remaining_points)
+#             else:
+#                 break
+
+#         lines = []
+#         for i in range(k+1):
+#             points_vis,_ = load_ply(target_folder + '/vis_lines_{}/'.format(i+1) + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply')
+#             lines.append(points_vis)
+        
+#         all_points_vis = torch.cat(lines)
+#         save_ply(target_folder + '/vis_lines_combined/' + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',all_points_vis)
+
+
+
+
+def main_scannet():
+
+    target_folder = '/scratch2/fml35/experiments/leveraging_geometry_for_shape/exp_117_scannet_models/models/3d_lines/exp_01'
     
     n_lines = 100
     n_steps = 1000
@@ -131,7 +183,7 @@ def main():
 
     n_repeats = 5
     
-    with open("/data/cornucopia/fml35/experiments/exp_024_debug/models/model_list.json",'r') as f:
+    with open("/scratch2/fml35/experiments/leveraging_geometry_for_shape/exp_117_scannet_models/models/model_list.json",'r') as f:
             model_list = json.load(f)["models"]
 
     for i in range(n_repeats):
@@ -168,5 +220,6 @@ def main():
         save_ply(target_folder + '/vis_lines_combined/' + model_list[j]["category"] + '_' + model_list[j]["model"].split('/')[2] + '.ply',all_points_vis)
 
 
+
 if __name__ == '__main__':
-    main()
+    main_scannet()

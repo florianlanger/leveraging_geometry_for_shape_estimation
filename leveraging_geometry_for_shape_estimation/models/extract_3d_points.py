@@ -23,7 +23,7 @@ def get_3d_wc_for_folder(models_folder_read,fov,W,device):
         for model in tqdm(os.listdir(models_folder_read + '/models/depth/' + cat)):
             for orientation in os.listdir(models_folder_read + '/models/depth/' + cat + '/' + model):
 
-                out_path = models_folder_read + '/models/3d_points/' + cat + '/' + model + '/' + orientation.replace('.npy','.ply')
+                out_path = models_folder_read + '/models/3d_points_individual/' + cat + '/' + model + '/' + orientation.replace('.npy','.ply')
         
                 depth_path = models_folder_read + '/models/depth/' + cat + '/' + model + '/' + orientation
                 depth = np.load(depth_path)
@@ -80,7 +80,7 @@ def main():
 
     device = torch.device("cuda:{}".format(global_config["general"]["gpu"]))
 
-    # make_empty_folder_structure(models_folder_read + '/models/keypoints/',models_folder_read + '/models/3d_points/')
+    make_empty_folder_structure(models_folder_read + '/models/keypoints/',models_folder_read + '/models/3d_points_individual/')
     torch.cuda.set_device(device)
 
     get_3d_wc_for_folder(models_folder_read,fov,W,device)

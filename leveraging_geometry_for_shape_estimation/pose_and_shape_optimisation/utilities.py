@@ -1,11 +1,12 @@
 import numpy as np
 
-def add_minimal_pose_info_dict(indices,predicted_r,predicted_t,avg_dist_pointclouds,avg_dist_furthest,avg_dist_reprojected_keypoints,combined,F1):
+def add_minimal_pose_info_dict(indices,predicted_r,predicted_t,scaling,avg_dist_pointclouds,avg_dist_furthest,avg_dist_reprojected_keypoints,combined,F1):
 
     pose_dict = {}
     pose_dict["indices"] = list(indices)
     pose_dict["predicted_r"] = [predicted_r[0,:].tolist(),predicted_r[1,:].tolist(),predicted_r[2,:].tolist()]
     pose_dict["predicted_t"] = predicted_t[0,:].tolist()
+    pose_dict["predicted_s"] = scaling
 
     pose_dict["avg_dist_pointclouds"] = float(avg_dist_pointclouds.item())
     pose_dict["avg_dist_furthest"] = float(avg_dist_furthest.item())

@@ -1,4 +1,4 @@
-# import some common libraries
+
 import numpy as np
 import os, json, cv2, random
 from tqdm import tqdm
@@ -20,10 +20,11 @@ from datetime import datetime
 print('import libraries')
 sys.path.insert(0,'/home/mifs/fml35/code/segmentation/mmdet')
 from mmdet.apis import init_detector, inference_detector, show_result_pyplot
-# import mmcv
 print('done')
 
-def visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,visualise=True):
+def visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,global_config,visualise=True):
+
+    first_name = name.split('.')[0]
 
 
     img_path = image_folder + '/' + name
@@ -31,6 +32,9 @@ def visualise_prediction(model,name,class_dict,target_folder,image_folder,testin
     
     info = result[0]
     mask_preds = result[1]
+
+    pix_to_scannet = {"bed":"bed","bookcase":"bookshelf","chair":"chair","desk":"table","misc":"display","sofa":"sofa","table":"table","tool":"display","wardrobe":"cabinet"}
+    pix_to_future3d = {"bed":"bed","bookcase":"cabinetshelfdesk","chair":"chair","desk":"cabinetshelfdesk","misc":"lighting","sofa":"sofa","table":"table","tool":"lighting","wardrobe":"cabinetshelfdesk"}
 
     h,w = cv2.imread(img_path).shape[:2]
 
@@ -42,7 +46,14 @@ def visualise_prediction(model,name,class_dict,target_folder,image_folder,testin
         for k in range(info[i].shape[0]):
 
             boxes.append(info[i][k,:4].tolist())
-            pred_categories.append(class_dict[i])
+            pred_category = class_dict[i]
+
+            if global_config["dataset"]["which_dataset"] == "scannet":
+                pred_category = pix_to_scannet[pred_category]
+            elif global_config["dataset"]["which_dataset"] == "future3d":
+                pred_category = pix_to_future3d[pred_category]
+
+            pred_categories.append(pred_category)
             scores.append(float(info[i][k,4]))
             masks.append(mask_preds[i][k] * 255)
 
@@ -54,12 +65,11 @@ def visualise_prediction(model,name,class_dict,target_folder,image_folder,testin
     scores = [scores[index] for index in sort_indices]
     masks = [masks[index] for index in sort_indices]
 
-    first_name = name.split('.')[0]
     
 
     for counter in range(len(scores)):
             # detection_name = first_name + '_' + str(counter).zfill(2)
-            detection_name = first_name + '_' + str(counter)
+            detection_name = first_name + '_' + str(counter).zfill(2)
 
             # pad_x,pad_y = padding
 
@@ -118,6 +128,7 @@ def main():
         visualisation_list = json.load(f)
 
     if global_config["segmentation"]["use_gt"] == "False":
+
         target_folder = global_config["general"]["target_folder"]
         config_file = global_config["segmentation"]["config"]
         checkpoint_file = global_config["segmentation"]["checkpoint"]
@@ -135,14 +146,18 @@ def main():
 
         class_dict = load_classes(model.CLASSES)
 
-        for name in tqdm(os.listdir(image_folder)):
+        for name in tqdm(sorted(os.listdir(image_folder))):
+
+            first_name = name.split('.')[0]
+            # if os.path.exists(target_folder + '/segmentation_all_vis/' + first_name + '.png'):
+            #     continue
 
             visualise = name in visualisation_list
             # if name == 'bed_0020.png':
 
             with torch.no_grad():
                 padding = [0,0]
-                visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,visualise=visualise)
+                visualise_prediction(model,name,class_dict,target_folder,image_folder,testing_threshold,padding,global_config,visualise=visualise)
 
 
 

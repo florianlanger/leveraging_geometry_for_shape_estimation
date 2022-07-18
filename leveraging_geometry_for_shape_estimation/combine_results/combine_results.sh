@@ -1,1 +1,1 @@
-python $2/combine_results/create_csv.py $1
+python $2/combine_results/create_csv_small_v2.py $1

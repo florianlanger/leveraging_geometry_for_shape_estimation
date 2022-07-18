@@ -47,12 +47,29 @@ def get_nn_from_gt_infos(gt_infos):
     nn = {"nearest_neighbours":[infos]}
     return nn
 
+def dummy_nn(category):
+
+    infos = {}
+
+    model = os.listdir('/scratches/octopus_2/fml35/datasets/shapenet_v2/ShapeNetRenamed/model/' + category)[0]
+
+    infos["model"] = "model/{}/{}/model_normalized.obj".format(category,model)
+    infos["category"] = category
+    infos["elev"] = "000"
+    infos["azim"] = "0.0"
+    infos["name"] = category + '_' + model
+    infos["path"] = "{}/{}/elev_{}_azim_{}.png".format(category,model,infos["elev"],infos["azim"])
+
+    nn = {"nearest_neighbours":[infos]}
+    return nn
+
 
 
 
 if __name__ == "__main__":   
 
     print('Get nn retrieval')
+    print('USe dummy retrieval if gt object is of different category is detection')
 
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
@@ -63,7 +80,7 @@ if __name__ == "__main__":
         target_folder = global_config["general"]["target_folder"]
         number_nn = global_config["retrieval"]["number_nearest_neighbours"]
 
-        for name in tqdm(os.listdir(target_folder + '/cropped_and_masked_small')):
+        for name in tqdm(sorted(os.listdir(target_folder + '/cropped_and_masked_small'))):
 
             img_path = target_folder + '/cropped_and_masked_small/' + name  
 
@@ -71,9 +88,19 @@ if __name__ == "__main__":
         
             with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as file:
                 gt_infos = json.load(file)
+
+            with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+                bbox_overlap = json.load(f)
+
+            with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as f:
+                segmentation_infos = json.load(f)
             
 
-            nn = get_nn_from_gt_infos(gt_infos)
+            nn = get_nn_from_gt_infos(gt_infos["objects"][bbox_overlap['index_gt_objects']])
+            if segmentation_infos["predictions"]["category"] != nn["nearest_neighbours"][0]["category"]:
+                assert True == False,(segmentation_infos,nn["nearest_neighbours"],bbox_overlap)
+                nn = dummy_nn(segmentation_infos["predictions"]["category"])
+
 
             with open(target_folder + '/nn_infos/' + new_name,'w') as f:
                 json.dump(nn, f,indent=4)

@@ -3,19 +3,23 @@ import numpy as np
 import cv2
 import itertools
 import sys
-import GPUtil
+
 
 from pytorch3d.ops import knn_points,sample_points_from_meshes
 from pytorch3d.structures import Meshes
 
 
-def sample_points_inside_segmentation(segmentation_mask,N_points,device):
+def sample_points_inside_segmentation(segmentation_mask,N_points,device,bbox):
     counter = 0
     h,w = segmentation_mask.shape[:2]
     all_pixel = np.zeros((N_points,2),dtype=int)
+
+    if not (segmentation_mask == 255).any():
+        return torch.from_numpy(all_pixel).to(device).to(float)
+
     while counter < N_points:
-        y = np.random.randint(h)
-        x = np.random.randint(w)
+        y = np.random.randint(bbox[1],bbox[3])
+        x = np.random.randint(bbox[0],bbox[2])
         if (segmentation_mask[y,x] == 255).all():
             all_pixel[counter] = np.array([y,x])
             counter += 1
@@ -105,14 +109,21 @@ def compute_rendered_pixel(predicted_r,predicted_t,world_coordinates,f,w,h,senso
 
     # print('camera_coordinates',camera_coordinates)
 
+    # print('camera_coordinates',camera_coordinates)
 
+    # print('camer coords',camera_coordinates[:,:3])
     # now get pixel bearing by dividing by z/f
     pb = camera_coordinates / (camera_coordinates[:,:,2:]/f)
+    # print('pb',pb[:,:3])
+    
+    # print('pb',pb)
 
     mask = (camera_coordinates[:,:,2] > 0)
     
     px = - pb[:,:,0] * w/sensor_width + w/2
     py = - pb[:,:,1] * w/sensor_width + h/2
+
+    # print('px',px[:,:3])
 
 
     pixel_rendered = torch.stack((py,px),dim=-1).to(int)
@@ -120,6 +131,25 @@ def compute_rendered_pixel(predicted_r,predicted_t,world_coordinates,f,w,h,senso
     pixel_rendered[~mask] = pixel_rendered[~mask] * 0 - 100000
 
     # print('pixel_rendered',pixel_rendered)
+
+    return pixel_rendered
+
+
+def compute_rendered_pixel_no_mask(predicted_r,predicted_t,world_coordinates,f,w,h,sensor_width,already_batched):
+
+    world_coordinates= world_coordinates.float()
+
+    if already_batched == False:
+        world_coordinates = world_coordinates.unsqueeze(0).repeat(predicted_r.shape[0],1,1)
+
+    camera_coordinates = torch.transpose(torch.matmul(predicted_r,torch.transpose(world_coordinates,-1,-2)),-1,-2) + predicted_t
+    pb = camera_coordinates / (np.abs(camera_coordinates[:,:,2:])/f)
+
+    px = - pb[:,:,0] * w/sensor_width + w/2
+    py = - pb[:,:,1] * w/sensor_width + h/2
+
+
+    pixel_rendered = torch.stack((py,px),dim=-1).to(int)
 
     return pixel_rendered
 

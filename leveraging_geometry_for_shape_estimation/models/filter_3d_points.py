@@ -14,7 +14,7 @@ from leveraging_geometry_for_shape_estimation.keypoint_matching.get_matches_3d i
 from leveraging_geometry_for_shape_estimation.keypoint_matching.detect_keypoints import make_empty_folder_structure
 from pytorch3d.io import save_ply,load_ply
 
-def combine_3d_wc_for_folder(models_folder_read):
+def combine_3d_wc_for_folder(models_folder_read,individual_dir,combined_dir):
 
     for cat in tqdm(os.listdir(models_folder_read + '/models/depth')):
         for model in tqdm(os.listdir(models_folder_read + '/models/depth/' + cat)):
@@ -22,10 +22,10 @@ def combine_3d_wc_for_folder(models_folder_read):
             all_points = []
             for orientation in os.listdir(models_folder_read + '/models/depth/' + cat + '/' + model):
 
-                inpath = models_folder_read + '/models/3d_points/3d_points_individual_orientation/' + cat + '/' + model + '/' + orientation.replace('.npy','.ply')
+                inpath = individual_dir + cat + '/' + model + '/' + orientation.replace('.npy','.ply')
                 all_points.append(load_ply(inpath)[0])
 
-            out_path = models_folder_read + '/models/3d_points/3d_points_all_combined/' + cat + '/' + model + '.ply'
+            out_path = combined_dir + cat + '/' + model + '.ply'
 
             save_ply(out_path,torch.cat(all_points))
 
@@ -94,17 +94,40 @@ def main():
 
     torch.cuda.set_device(device)
 
-    # combine_3d_wc_for_folder(models_folder_read)
-    input_dir = '/scratch/fml35/experiments/leveraging_geometry_for_shape/test_output_all_s2/models/3d_points/3d_points_all_combined'
-    output_dir = '/scratch/fml35/experiments/leveraging_geometry_for_shape/test_output_all_s2/models/3d_points/3d_points_filtered_02_mean'
+    global_info = sys.argv[1] + '/global_information.json'
+    with open(global_info,'r') as f:
+        global_config = json.load(f)
+
+    models_folder_read = global_config["general"]["models_folder_read"]
+
+    individual_dir = models_folder_read + '/models/3d_points_individual/'
+    combined_dir = models_folder_read + '/models/3d_points_combined/'
+    filtered_dir = models_folder_read + '/models/3d_points_filtered/'
+    
+    if not os.path.exists(combined_dir):
+        os.mkdir(combined_dir)
+    if not os.path.exists(filtered_dir):
+        os.mkdir(filtered_dir)
+            
+
+    for cat in os.listdir(individual_dir):
+        if not os.path.exists(combined_dir + '/' + cat):
+            os.mkdir(combined_dir + '/' + cat)
+        if not os.path.exists(filtered_dir + '/' + cat):
+            os.mkdir(filtered_dir + '/' + cat)
+
+    combine_3d_wc_for_folder(models_folder_read,individual_dir,combined_dir)
+
     # threshold = 0.05**2
     # min_support = 16
+
+    models_folder_read = global_config["general"]["models_folder_read"]
 
     threshold = 0.03**2
     min_support = 16
 
 
-    filter_3d_wc_for_folder(input_dir,output_dir,threshold,min_support)
+    filter_3d_wc_for_folder(combined_dir,filtered_dir,threshold,min_support)
     
 
     

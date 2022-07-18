@@ -7,7 +7,7 @@ import pickle
 import math
 import os
 import json
-
+import random
 
 def set_camera_6dof(scene,x,y,z,rx,ry,rz):
     scene.camera.location.x = x
@@ -28,6 +28,7 @@ def render_object(obj_object,R,T,elev,azim,output_dir,scene):
     
     obj_object.rotation_euler = tuple(R)
     scene.render.filepath = output_dir + '/' + name
+    print(output_dir + '/' + name)
     bpy.ops.render.render( write_still=True )
 
 def enable_gpus(device_type,device_list):
@@ -65,10 +66,8 @@ def enable_gpus(device_type,device_list):
 def main():
 
     # gpus = enable_gpus("CUDA", [3])
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "7"
-
-    target_folder = "/data/cornucopia/fml35/experiments/exp_024_debug"    
-
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "7"    
+    target_folder = "/scratches/octopus/fml35/datasets/own_datasets/leveraging_geometry_for_shape_estimation/3d_future/data_01"
     global_info = target_folder + '/global_information.json'
     with open(global_info,'r') as f:
         global_config = json.load(f)
@@ -76,6 +75,9 @@ def main():
     pi = 3.14159265
     fov = global_config["models"]["fov"]
     img_size = global_config["models"]["img_size"]
+
+    categories = ["bed","cabinetshelfdesk","chair","lighting","pierstool","sofa","table"]
+    cat = categories[1]
     
 
     # Blender
@@ -135,17 +137,35 @@ def main():
     with open(global_config["general"]["target_folder"] + "/models/model_list.json",'r') as f:
         model_list = json.load(f)["models"]
 
-    for j in range(0,len(model_list)):
+    # for j in range(0,len(model_list)):
+    # for j in range(len(model_list)-1,0,-1):
+    numbers = list(range(len(model_list)))
+    # random.shuffle(numbers)
+    for j in numbers:
+        # if model_list[j]["category"] != cat:
+        #     continue
 
         cat_path = global_config["general"]["target_folder"] + "/models/render_no_background/" + model_list[j]["category"]
         if not os.path.exists(cat_path):
             os.mkdir(cat_path)
 
         model_path = global_config["general"]["target_folder"] + "/models/render_no_background/" + model_list[j]["category"] + '/' + model_list[j]["model"].split('/')[2]
+        
+        name_last = 'elev_045_azim_22.5.png'.format(elev,azim)
+        if os.path.exists(model_path + '/' + name_last):
+            continue
+
+        if '7e101ef3-7722-4af8-90d5-7c562834fabd' in model_path:
+            continue
+        
         if not os.path.exists(model_path):
             os.mkdir(model_path)
+
+        # if not 'd970177e3a932dc344221bef0fa3c36b' in model_path:
+        #     continue
     
-        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["pix3d_path"] + model_list[j]["model"])
+        # imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["dir_path"] + model_list[j]["model"])
+        imported_object = bpy.ops.import_scene.obj(filepath=global_config["dataset"]["dir_path"] + model_list[j]["model"])
         obj_object = bpy.context.selected_objects[0]
 
         # remove material

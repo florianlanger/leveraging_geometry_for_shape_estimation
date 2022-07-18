@@ -68,16 +68,21 @@ def get_pose_for_folder(global_config):
         with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
             gt_infos = json.load(f)
 
+        with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+            bbox_overlap = json.load(f)
+
+        with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as f:
+            segmentation_infos = json.load(f)
+
         
         for i in range(top_n_retrieval):
         # for i in range(1):
             output_path = target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '_00' + '.json'
             if os.path.exists(output_path):
                 continue
-
             elev = retrieval_list[i]["elev"]
             azim = retrieval_list[i]["azim"]
-            model_path = global_config["dataset"]["pix3d_path"] + retrieval_list[i]["model"]
+            model_path = global_config["dataset"]["dir_path"] + retrieval_list[i]["model"]
             # model_path = models_folder_read + "/models/remeshed/" + retrieval_list[i]["model"].replace('model/','')
 
             with open(target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','r') as f:
@@ -99,13 +104,14 @@ def get_pose_for_folder(global_config):
             h = gt_infos["img_size"][1]
             sensor_width = pose_config["sensor_width"]
             real_bearings_all,intrinsic_camera_matrix = convert_pixel_to_bearings(pixels_real_all,f,w,h,sensor_width)
+            gt_scaling = gt_infos["objects"][bbox_overlap['index_gt_objects']]["scaling"]
 
         
 
             predicted_obj = load_obj(model_path, device=device,create_texture_atlas=False, load_textures=False)
             points_from_predicted_mesh = get_points_from_predicted_mesh(predicted_obj,elev,azim,pose_config["n_points_finding_best"],device)
             segmentation_mask = cv2.imread(target_folder + '/segmentation_masks/' + name.rsplit('.')[0] + '.png')
-            pixel_inside_segmentation = sample_points_inside_segmentation(segmentation_mask,pose_config["n_points_finding_best"],device)
+            pixel_inside_segmentation = sample_points_inside_segmentation(segmentation_mask,pose_config["n_points_finding_best"],device,segmentation_infos["predictions"]["bbox"])
 
             # initialise arrays, plus 4 because of inner loop with max four different poses
             all_predicted_r = torch.zeros((pose_config["max_poses_to_check"]+100,3,3))
@@ -169,7 +175,7 @@ def get_pose_for_folder(global_config):
                 predicted_t = all_predicted_t[idx*pose_config["batch_size"]:(idx+1)*pose_config["batch_size"]]
                 
                 if pose_config["use_gt_z"] == "True":
-                    T_gt = gt_infos["trans_mat"]
+                    T_gt = gt_infos["objects"][bbox_overlap['index_gt_objects']]["trans_mat"]
                     predicted_t = get_pred_t_gt_z(predicted_t,T_gt,device)
                     # print('Use gt T whole not just z')
                     # predicted_t = torch.Tensor(T_gt).to(device).tile(predicted_t.shape[0],1).unsqueeze(1)
@@ -185,7 +191,7 @@ def get_pose_for_folder(global_config):
 
                 for l in range(predicted_r.shape[0]):
                     F1_score = None
-                    pose_information = add_minimal_pose_info_dict(indices_4[l],predicted_r[l],predicted_t[l],avg_dist_pointclouds[l],avg_dist_furthest[l],avg_dist_reprojected_keypoints[l],combined[l],F1_score)
+                    pose_information = add_minimal_pose_info_dict(indices_4[l],predicted_r[l],predicted_t[l],gt_scaling,avg_dist_pointclouds[l],avg_dist_furthest[l],avg_dist_reprojected_keypoints[l],combined[l],F1_score)
                     all_pose_information.append(pose_information)
 
             n_poses_evaluate = min(pose_config["number_visualisations_per_object"],len(all_pose_information))
@@ -207,7 +213,7 @@ def get_pose_for_folder(global_config):
                 pose_information["indices"] = indices_all[pose_information["indices"]].tolist()
 
                 with open(output_path,'w') as f:
-                    json.dump(pose_information,f)
+                    json.dump(pose_information,f,indent=4)
 
 
 

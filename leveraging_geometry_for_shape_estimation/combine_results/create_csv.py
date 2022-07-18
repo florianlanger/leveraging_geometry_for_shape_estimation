@@ -97,8 +97,9 @@ def combine_information(global_config):
         # with open(target_folder + '/metrics/' + name,'r') as f:
         #     metrics = json.load(f)
 
+        gt_object = gt_infos["objects"][bbox_overlap['index_gt_objects']]
 
-        infos_gt = [gt_infos["img"],gt_infos["category"],gt_infos["img_size"][0],gt_infos["img_size"][1],gt_infos["bbox"],gt_infos["model"],gt_infos["focal_length"],gt_infos["rot_mat"],gt_infos["trans_mat"]]
+        infos_gt = [gt_infos["img"],gt_object["category"],gt_infos["img_size"][0],gt_infos["img_size"][1],gt_object["bbox"],gt_object["model"],gt_infos["focal_length"],gt_object["rot_mat"],gt_object["trans_mat"]]
         infos_segmetation = [segmentation_infos["predictions"]["category"],segmentation_infos["predictions"]["score"],segmentation_infos["predictions"]["bbox"]]
         infos_segmentation_eval = [bbox_overlap["box_iou"],bbox_overlap["mask_iou"]]
         infos_nn = [nn_infos["nearest_neighbours"][0]["model"],float(nn_infos["nearest_neighbours"][0]["elev"]),float(nn_infos["nearest_neighbours"][0]["azim"])]

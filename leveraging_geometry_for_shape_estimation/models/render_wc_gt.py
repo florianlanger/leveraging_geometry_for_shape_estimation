@@ -36,10 +36,8 @@ def create_pixel_bearing(W,H,P_proj,device):
     pb_z = xyz_proj[:,:,2]
     return pb_x,pb_y,pb_z
 
-def wc_gt_object(data,device,path_to_remeshed):
-    w,h = data["img_size"]
+def wc_gt_object(data,device,path_to_remeshed,w,h,f):
 
-    f = data["focal_length"]
     if w >= h:
         fov = 2 * np.arctan((16.)/f)
     elif w < h:
@@ -112,6 +110,9 @@ if __name__ == '__main__':
     for img in os.listdir(global_config["general"]["target_folder"] + '/gt_infos/'):
         with open(global_config["general"]["target_folder"] + '/gt_infos/' + img) as f:
             gt_info = json.load(f)
+
+        w,h = gt_info["img_size"]
+        f = gt_info["focal_length"]
 
         wc = wc_gt_object(gt_info,device,path_to_remeshed)
         save_path = global_config["general"]["target_folder"] + '/wc_gt/' + img.replace('.json','.npy')

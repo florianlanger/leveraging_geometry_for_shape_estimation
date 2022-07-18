@@ -1,0 +1,226 @@
+
+from operator import gt
+import torch
+import numpy as np
+import json
+import sys
+import argparse
+import os
+from tqdm import tqdm
+import random
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+from leveraging_geometry_for_shape_estimation.data_conversion.create_dirs import dict_replace_value
+from leveraging_geometry_for_shape_estimation.utilities.dicts import open_json_precomputed_or_current,determine_base_dir
+
+def get_angle(m1,m2):
+
+    m = np.matmul(np.array(m1).T,np.array(m2))
+
+    value = (np.trace(m) - 1 )/ 2
+
+    clipped_value = np.clip(value,-0.9999999,0.999999)
+
+    angle = np.arccos(clipped_value)
+
+    return angle * 180 / np.pi 
+
+def plot_nn_selection(cats_best_possible_nn,cats_best_possible_orientation,cats_best_combined,save_path):
+
+    total = np.array([len(cats_best_possible_nn[cat]) for cat in cats_best_possible_nn])
+    best_model = np.array([sum(np.array(cats_best_possible_nn[cat])) for cat in cats_best_possible_nn]).astype(float)
+    best_orientation = np.array([sum(np.array(cats_best_possible_orientation[cat])) for cat in cats_best_possible_orientation]).astype(float)
+    best_combined = np.array([sum(np.array(cats_best_combined[cat])) for cat in cats_best_combined]).astype(float)
+
+    width = 0.2
+
+    x = np.array(range(len(cats_best_possible_nn)))
+    
+
+    ax = plt.subplot(111)
+    # ax.bar(x-width, y, width=width, color='b', align='center')
+    ax.bar(x-width, best_model/total, width=width, color='r', align='center',label='best model')
+    ax.bar(x, best_orientation/total, width=width, color='g', align='center',label='best orientation')
+    ax.bar(x+width, best_combined/total, width=width, color='b', align='center',label='best combined')
+
+    # ax.set_xticklabels([cat for cat in cats_best_possible],minor=True)
+    plt.xticks(x, [cat for cat in cats_best_possible_nn])
+    plt.legend()
+
+    # rects = ax.patches
+    # for rect, label in zip(rects, list(total)):
+    #     height = rect.get_height()
+    #     ax.text(
+    #         rect.get_x() + rect.get_width() / 2, height + 0.05, label, ha="center", va="bottom"
+    #     )
+
+    plt.savefig(save_path)
+
+def choose_min_or_max_list(list,min_or_max):
+    if min_or_max == 'min':
+        return min(list),int(np.argmin(list))
+    elif min_or_max == 'max':
+        return max(list),int(np.argmax(list))
+
+
+
+def find_rotation_index(global_config,name,min_or_max,indicator,n_rotations,nn_index):
+    if global_config["R"]["choose_R"] in ["closest_gt","retrieval"]:
+        selected_R = open_json_precomputed_or_current('/poses_R_selected/' + name.split('.')[0] + '_' + str(nn_index).zfill(3) + '.json',global_config,"R")
+        rotation_index = selected_R["R_index"]
+
+    else:
+        indicator_scores = []
+        for k in range(n_rotations):
+            with open(global_config["general"]["target_folder"] + '/poses/' + name.split('.')[0] + '_' + str(nn_index).zfill(3) + '_' + str(k).zfill(2) + '.json','r') as f:
+                poses = json.load(f)
+
+            indicator_scores.append(poses[indicator])
+        _,rotation_index = choose_min_or_max_list(indicator_scores,min_or_max)
+    return rotation_index
+
+def get_best_nn(target_folder,top_n_retrieval,indicator,min_or_max,categories,evaluate_all,n_rotations,global_config):
+
+    cats_best_possible_nn = {}
+    cats_best_possible_orientation = {}
+    cats_best_combined = {}
+    for cat in categories:
+        cats_best_possible_nn[cat] = []
+        cats_best_possible_orientation[cat] = []
+        cats_best_combined[cat] = []
+
+    count_no_retrieval = 0
+
+    # print('ONLY TOP 1 NN, always select correct rotation')
+    # print(determine_base_dir(global_config,'segmentation') + '/cropped_and_masked')
+    for name in tqdm(sorted(os.listdir(determine_base_dir(global_config,'segmentation') + '/cropped_and_masked'))):
+        # if not "scene0663_01-000000" in name and not "scene0653_00-001300" in name:
+        #     continue
+
+        indicator_scores = []
+        Fs = []
+
+        # print(determine_base_dir(global_config,'retrieval') + '/nn_infos/' + name.split('.')[0] + '.json')
+        if not os.path.exists(determine_base_dir(global_config,'retrieval') + '/nn_infos/' + name.split('.')[0] + '.json'):
+            count_no_retrieval += 1
+            continue
+
+        retrieval_list = open_json_precomputed_or_current('/nn_infos/' + name.split('.')[0] + '.json',global_config,"retrieval")["nearest_neighbours"]
+        # with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as open_f:
+        #     retrieval_list = json.load(open_f)["nearest_neighbours"]
+
+        # with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+        #     bbox_overlap = json.load(f)
+        bbox_overlap = open_json_precomputed_or_current('/bbox_overlap/'+ name.split('.')[0] + '.json',global_config,"segmentation")
+
+        n_neighbours = min([top_n_retrieval,len(retrieval_list)])
+
+        if n_neighbours == 0:
+            count_no_retrieval += 1
+
+        rotation_indices = []
+        indicator_scores = []
+        # for i in range(n_neighbours):
+        i = 0
+        rotation_index = find_rotation_index(global_config,name,min_or_max,indicator,n_rotations,i)
+
+        if not os.path.exists(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '_' + str(rotation_index).zfill(2) + '.json'):
+            continue
+
+        with open(target_folder + '/poses/' + name.split('.')[0] + '_' + str(i).zfill(3) + '_' + str(rotation_index).zfill(2) + '.json','r') as f:
+            poses = json.load(f)
+
+        indicator_scores.append(poses[indicator])
+        rotation_indices.append(rotation_index)
+
+            # if evaluate_all:
+            #     with open(target_folder + '/metrics/' + name.split('.')[0] + '_' + str(i).zfill(3) + '_' + str(k).zfill(2) + '.json','r') as f:
+            #         metrics = json.load(f)
+                
+            #     Fs.append(metrics['F1'])
+
+
+        best_value,index = choose_min_or_max_list(indicator_scores,min_or_max)
+        selected_nn = index
+        selected_orientation = rotation_indices[index]
+
+        # selected_nn = 0
+        # selected_orientation = int(np.argmin([get_angle(np.array(poses["gt_R"]),rotation) for rotation in rotations]))
+
+
+        with open(target_folder + '/selected_nn/' + name.split('.')[0] + '.json','w') as f:
+            json.dump({"selected_nn":selected_nn, 'selected_orientation':selected_orientation},f)
+
+
+        if evaluate_all:
+            best_possible = Fs.index(max(Fs))
+            best_nn = best_possible // n_rotations
+            best_orientation = best_possible % n_rotations
+
+            gt_cat = gt_infos["objects"][bbox_overlap['index_gt_objects']]['category']
+
+            cats_best_possible_nn[gt_cat].append(selected_nn == best_nn)
+            cats_best_possible_orientation[gt_cat].append(selected_orientation == best_orientation)
+            cats_best_combined[gt_cat].append(selected_nn == best_nn and selected_orientation == best_orientation)
+
+
+
+            with open(target_folder + '/selected_nn/' + name.split('.')[0] + '.json','w') as f:
+                json.dump({"selected_nn":selected_nn,'best_nn': best_nn, 'selected_orientation':selected_orientation,'best_orientation':best_orientation},f)
+
+    # print('N cropped_and_masked ',len(os.listdir(target_folder + '/cropped_and_masked')))
+    print('N no retrieval ', count_no_retrieval)
+    # print('remaining ',len(os.listdir(target_folder + '/cropped_and_masked')) - count_no_retrieval)
+    return cats_best_possible_nn,cats_best_possible_orientation,cats_best_combined
+
+
+            
+
+
+
+def write_aps(global_config):
+
+    
+    target_folder = global_config["general"]["target_folder"]
+
+    number_nn = global_config["keypoints"]["matching"]["top_n_retrieval"]
+    categories = global_config["dataset"]["categories"]
+
+    setting_to_metric = {'segmentation': 'avg_dist_furthest', 'keypoints': 'avg_dist_reprojected_keypoints', 'combined':'combined','meshrcnn':'meshrcnn','F1':'F1','factor':'factor'}
+    setting_to_min_or_max = {'segmentation': 'min', 'keypoints': 'min', 'combined':'min','meshrcnn':'check','F1':'max','factor':'max'}
+    indicator = setting_to_metric[global_config["pose_and_shape"]["pose"]["choose_best_based_on"]]
+    min_or_max = setting_to_min_or_max[global_config["pose_and_shape"]["pose"]["choose_best_based_on"]]
+    evaluate_all = global_config["evaluate_poses"]["evaluate_all"]
+
+
+    if global_config["pose_and_shape_probabilistic"]["use_probabilistic"] == "True" and global_config["pose_and_shape_probabilistic"]["pose"]["gt_R"] == False:
+        n_rotations = 4
+    else:
+        n_rotations = 1
+    
+    cats_best_possible_nn,cats_best_possible_orientation,cats_best_combined = get_best_nn(target_folder,number_nn,indicator,min_or_max,categories,evaluate_all,n_rotations,global_config)
+
+    plot_nn_selection(cats_best_possible_nn,cats_best_possible_orientation,cats_best_combined,target_folder + '/global_stats/nn_selection.png')
+
+
+
+
+
+if __name__ == '__main__':
+    print('Select BEst ')
+    print('USe R closest to gt')
+    global_info = sys.argv[1] + '/global_information.json'
+    with open(global_info,'r') as f:
+        global_config = json.load(f)
+
+    # global_config = dict_replace_value(global_config,'/scratches/octopus_2/fml35/','/scratch2/fml35/')
+
+    write_aps(global_config)
+
+    
+    
+    
+    
+  

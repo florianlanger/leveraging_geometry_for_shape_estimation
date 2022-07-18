@@ -8,7 +8,7 @@ def flatten(t):
     return [item for sublist in t for item in sublist]
 
 def main():
-    exp_dir = '/scratch/fml35/experiments/leveraging_geometry_for_shape'
+    exp_dir = '/scratch2/fml35/experiments/leveraging_geometry_for_shape'
 
     # order is old_dir, new_dir, stage
     old_dir = exp_dir + '/' + sys.argv[1]
@@ -22,15 +22,22 @@ def main():
 
     os.mkdir(new_dir)
 
+    with open(old_dir + '/global_information.json','r') as f:
+        global_config = json.load(f)
+    global_config["general"]["target_folder"] = new_dir
+    with open(new_dir + '/global_information.json','w') as f:
+        json.dump(global_config,f,indent=4)
+
+
+
     stage_start = ['images','masks','gt_infos','models']
     stage_seg = ['segmentation_infos','segmentation_all_vis','segmentation_vis','cropped_and_masked','cropped_and_masked_small','segmentation_masks','bbox_overlap']
     stage_lines = ['lines_2d','lines_2d_vis','lines_2d_cropped','lines_2d_cropped_vis','lines_2d_filtered','lines_2d_filtered_vis']
     stage_retrieval = ['nn_infos','nn_vis','embedding']
     stage_keypoints = ['keypoints','keypoints_vis','matches','matches_orig_img_size','matches_vis','wc_matches','matches_quality','matches_quality_vis','wc_gt']
-    stage_R = ['factors','factors_lines_vis','poses_R']
-    stage_T = ['T_lines_vis','factors_T','poses_vis','poses']
-    stage_eval = ['metrics','combined_vis','combined_vis_metrics_name','global_stats','global_stats/T_hists','selected_nn']
-
+    stage_R = ['factors','factors_lines_vis','poses_R','/poses_R_selected']
+    stage_T = ['T_lines_vis','T_lines_vis_annotations','T_lines_factors','factors_T','poses_vis','poses']
+    stage_eval = ['metrics','metrics_scannet','combined_vis','combined_vis_metrics_name','global_stats','global_stats/T_hists','global_stats/eval_scannet','global_stats/eval_scannet/results_per_scene','global_stats/eval_scannet/results_per_scene_filtered','global_stats/eval_scannet/results_per_scene_flags_with_retrieval','global_stats/eval_scannet/results_per_scene_flags_without_retrieval','global_stats/eval_scannet/results_per_frame_visualised','selected_nn']
     all_stages = [stage_start,stage_seg,stage_lines,stage_retrieval,stage_keypoints,stage_R,stage_T,stage_eval]
 
     stage_index = map_stage_to_index[stage]
@@ -39,24 +46,24 @@ def main():
 
     # make folders
     for folder in folders_copy:
+        print('Copying ',folder)
         shutil.copytree(old_dir + '/' + folder,new_dir + '/' + folder)
     for folder in folders_create:
         os.mkdir(new_dir + '/' + folder)
 
     if stage_index >= 4:
-        shutil.copy(old_dir + '/global_stats/retrieval_accuracy_all_embeds.json',new_dir + '/global_stats/retrieval_accuracy_all_embeds.json')
+        if os.path.exists(old_dir + '/global_stats/retrieval_accuracy_all_embeds.json'):
+            shutil.copy(old_dir + '/global_stats/retrieval_accuracy_all_embeds.json',new_dir + '/global_stats/retrieval_accuracy_all_embeds.json')
 
 
     # copy visualisation list
     shutil.copy(old_dir + '/global_stats/visualisation_images.json',new_dir + '/global_stats/visualisation_images.json')
     # load json and change name
-    with open(old_dir + '/global_information.json','r') as f:
-        global_config = json.load(f)
-    global_config["general"]["target_folder"] = new_dir
-    with open(new_dir + '/global_information.json','w') as f:
-        json.dump(global_config,f,indent=4)
 
-    shutil.copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation',new_dir + '/code')
+    # shutil.copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation',new_dir + '/code')
+
+    shutil.copytree('/home/mifs/fml35/code/shape/leveraging_geometry_for_shape_estimation',new_dir + '/code/leveraging_geometry_for_shape_estimation')
+    shutil.copytree('/home/mifs/fml35/code/shape/retrieval_plus_keypoints/probabilistic_formulation',new_dir + '/code/probabilistic_formulation')
 
 
 

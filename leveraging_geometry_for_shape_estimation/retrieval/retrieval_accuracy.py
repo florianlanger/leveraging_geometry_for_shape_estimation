@@ -18,6 +18,8 @@ def compute_accuracies(all_nn_infos,all_gt_models,accuracies,categories):
 
     print(first_correct_by_category)
 
+    print()
+
 
     for i,nearest_neighbours in enumerate(all_nn_infos):
         first_correct = get_first_correct(nearest_neighbours,all_gt_models[i])
@@ -64,7 +66,10 @@ if __name__ == "__main__":
         with open(target_folder + '/gt_infos/' + gt_file,'r') as file:  
             gt_infos = json.load(file)
 
-        split_model = gt_infos["model"].split('/')
+        with open(target_folder + '/bbox_overlap/' + name,'r') as f:
+            bbox_overlap = json.load(f)
+
+        split_model = gt_infos["objects"][bbox_overlap['index_gt_objects']]["model"].split('/')
         gt_model = split_model[1] + '_' + split_model[2]
         all_gt_models.append(gt_model)
 

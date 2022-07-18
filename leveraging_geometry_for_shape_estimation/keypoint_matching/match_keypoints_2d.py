@@ -85,19 +85,37 @@ def pixel_cropped_to_original(pixel,bb,max_bbox_length,img_size):
 def get_matches_for_folder(target_folder,top_n_retrieval,crossCheck,k_matches_no_crossCheck,max_bbox_length,img_size,models_folder_read,visualise,visualisation_list,run_on_octopus):
 
     for name in tqdm(os.listdir(target_folder + '/cropped_and_masked')):
-
         kp_real = np.load(target_folder + '/keypoints/' + name.split('.')[0] + '.npz')
-        pts_real,desc_real = kp_real["pts"],kp_real["desc"]
-        
+        pts_real = kp_real["pts"]
+      
+        if pts_real.shape[1] == 0:
+            desc_real = np.zeros((256,1)).astype(np.float32)
+            pts_real = np.array([[128],[128],[1.]]).astype(np.float32)
+        else:
+            desc_real = kp_real["desc"]
+
         with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as f:
             retrieval_list = json.load(f)["nearest_neighbours"]
         
         for i in range(top_n_retrieval):
-            out_path = target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
-            if os.path.exists(out_path):
-                continue
 
-            rendered_kp_path = models_folder_read + '/models/keypoints/' + retrieval_list[i]["path"].replace('.png','.npz').replace('.0.','.').replace('.5.','.')
+            out_path = target_folder + '/matches_orig_img_size/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json'
+
+            # if len(desc_real.shape) == 1:
+            #     with open(target_folder + '/matches/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.json','w') as f:
+            #         json.dump({"pixels_real": [],"pixels_rendered": []},f)
+            #     with open(out_path,'w') as f:
+            #         json.dump({"pixels_real_orig_size": [],"pixels_rendered": []},f)
+            #     continue
+
+            # if os.path.exists(out_path):
+            #     continue
+
+            if models_folder_read == "/scratch/fml35/experiments/leveraging_geometry_for_shape/test_output_all_s2":
+                rendered_kp_path = models_folder_read + '/models/keypoints/' + retrieval_list[i]["path"].replace('.png','.npz').replace('.0.','.').replace('.5.','.')
+            else:
+                rendered_kp_path = models_folder_read + '/models/keypoints/' + retrieval_list[i]["path"].replace('.png','.npz')
+
             kp_rendered = np.load(rendered_kp_path)
             pts_rendered,desc_rendered = kp_rendered["pts"],kp_rendered["desc"]
 

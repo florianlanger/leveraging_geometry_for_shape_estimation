@@ -101,18 +101,20 @@ def get_world_coordinates(wc,pixels_rendered):
     world_coordinates_matches = []
     for i in range(pixels_rendered.shape[0]):
         pixel = pixels_rendered[i]
+        found_3d = False
         for j in range(search_increments.shape[0]):
             if wc[pixel[0],pixel[1],2] != -1:
 
                 world_coordinates_matches.append(list(wc[pixel[0],pixel[1]]))
+                found_3d = True
                 break
-            
 
             pixel = pixels_rendered[i] + search_increments[j]
 
-        if j == search_increments.shape[0] - 1:
+        if found_3d == False:
             world_coordinates_matches.append([-100000,-100000,-100000])
 
+    assert len(world_coordinates_matches) == pixels_rendered.shape[0], (pixels_rendered.shape[0],len(world_coordinates_matches))
     return np.array(world_coordinates_matches)
 
 
@@ -127,11 +129,20 @@ def get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W,
         
         with open(target_folder + '/nn_infos/' + name.split('.')[0] + '.json','r') as f:
             retrieval_list = json.load(f)["nearest_neighbours"]
+
+        with open(target_folder + '/gt_infos/' + name.rsplit('_',1)[0] + '.json','r') as f:
+            gt_infos = json.load(f)
+
+        with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+            bbox_overlap = json.load(f)
         
         for i in range(top_n_retrieval):
             out_path = target_folder + '/wc_matches/' + name.split('.')[0] + '_' + str(i).zfill(3) + '.npy'
-            if os.path.exists(out_path):
-                continue
+
+            # if not 'scene0000_00-000800_2_000' in out_path:
+            #     continue
+            # if os.path.exists(out_path):
+            #     continue
 
             depth_path = models_folder_read + '/models/depth/' + retrieval_list[i]["path"].replace('.png','.npy')
             depth = np.load(depth_path)
@@ -151,6 +162,17 @@ def get_3d_wc_for_folder(target_folder,models_folder_read,top_n_retrieval,fov,W,
             pixels_rendered = np.array(matches_orig_img_size["pixels_rendered"])
 
             wc = get_world_coordinates(wc_grid,pixels_rendered)
+
+            scale = np.array(gt_infos["objects"][bbox_overlap['index_gt_objects']]["scaling"])
+            # print(scale)
+            # if wc.shape[0] != 0:
+            wc = wc * scale
+            # print('wc',wc)
+
+
+            # R = gt_infos["objects"][bbox_overlap['index_gt_objects']]["rot_mat"]
+            # R_no_scaling = gt_infos["objects"][bbox_overlap['index_gt_objects']]["rot_mat_no_scaling"]
+            # scaling = gt_infos["objects"][bbox_overlap['index_gt_objects']]["scaling"]
 
             np.save(out_path,wc)
 

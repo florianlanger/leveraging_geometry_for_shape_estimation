@@ -135,12 +135,9 @@ def euclidean_dist(relevant_model_embeddings,real_image_embed):
 
 
 def find_nearest_neighbours(real_embedding,syn_embeddings,category,number_nearest_neighbours,converter):
-
     (start_category,end_category) = converter.category_to_index_range(category)
     relevant_model_embeddings = syn_embeddings[start_category:end_category,:]
-    
     distances = euclidean_dist(relevant_model_embeddings,real_embedding)
-
 
     number_nn = min([number_nearest_neighbours,distances.shape[0]])
     sorted_distances,nearest_neighbours = distances.topk(number_nn, largest=False)
@@ -215,7 +212,6 @@ def get_dummy_config():
 if __name__ == "__main__":   
 
     print('Get nn retrieval')
-    print('aLways use gt category!!!!')
 
     global_info = sys.argv[1] + '/global_information.json'
     with open(global_info,'r') as f:
@@ -240,7 +236,11 @@ if __name__ == "__main__":
 
         dummy_config_old_code = get_dummy_config()
 
-        path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_old_order.json'
+        # path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_old_order.json'
+        print('CHANGED to NORMAL ORDER')
+        path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list.json'
+        # path_models_file = global_config["general"]["models_folder_read"] + '/models/model_list_only_bed.json'
+
         # path_models_file = target_folder + '/models/model_list.json'
         elev = global_config["models"]["elev"]
         azim = global_config["models"]["azim"]
@@ -254,7 +254,7 @@ if __name__ == "__main__":
         network = load_network(dummy_config_old_code,device,checkpoint_file)
         
         with torch.no_grad():
-            true_false_to_gt_predicted = {"True":"gt","False":"predicted"}
+            true_false_to_gt_predicted = {"True":"gt","False":"predicted","roca":"predicted"}
             mask_type = true_false_to_gt_predicted[global_config["segmentation"]["use_gt"]]
             syn_embedding_path = global_config["general"]["models_folder_read"] + '/models/syn_embedding_{}_{}.npy'.format(global_config["dataset"]["split"],mask_type)
             if os.path.exists(syn_embedding_path):
@@ -262,7 +262,8 @@ if __name__ == "__main__":
                 syn_embeddings = torch.from_numpy(np.load(syn_embedding_path))
             else:
                 syn_embeddings = embed_rendered(network,converter,path_CAD_renders,device)
-            #     np.save(syn_embedding_path,syn_embeddings.numpy())
+                np.save(syn_embedding_path,syn_embeddings.numpy())
+
 
             # syn_embeddings = torch.from_numpy(np.load(global_config["general"]["models_folder_read"] + '/models/syn_embedding_old_order.npy'))
             # syn_embeddings = None
@@ -279,7 +280,7 @@ if __name__ == "__main__":
                     np.save(real_path,real_embedding.numpy())
 
                 # with open(target_folder + '/segmentation_infos/' + name.replace('.png','.json'),'r') as file:
-                new_name =  name.split('_')[0] + '_' + name.split('_')[1] + '_' + str(int(name.split('_')[2].split('.')[0])).zfill(1) + '.json'
+                new_name =  name.split('_')[0] + '_' + name.split('_')[1] + '_' + str(int(name.split('_')[2].split('.')[0])).zfill(2) + '.json'
                 # with open(target_folder + '/segmentation_infos/' + name.split('.')[0] + '.json','r') as file:
                 with open(target_folder + '/segmentation_infos/' + new_name,'r') as file:
                     predicted_category = json.load(file)["predictions"]["category"]
@@ -287,7 +288,10 @@ if __name__ == "__main__":
                 with open(target_folder + '/gt_infos/' + name.split('_')[0] + '_' + name.split('_')[1] + '.json','r') as file:
                     gt_infos = json.load(file)
 
-                predicted_category = gt_infos["category"]
+                with open(target_folder + '/bbox_overlap/' + name.split('.')[0] + '.json','r') as f:
+                    bbox_overlap = json.load(f)
+                    
+                # assert predicted_category == gt_infos["objects"][bbox_overlap['index_gt_objects']]["category"]
                 
                 nn = find_nearest_neighbours(real_embedding,syn_embeddings,predicted_category,number_nn,converter)
 
